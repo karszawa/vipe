@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Electron App</title>
+  <script>
+      window.onload = function() {
+        require('babel-register');
+        require('./script/click');
+        require('./script/react');
+      }
+  </script>
+</head>
+
+<body>
+  <h1>Electron Test</h1>
+  <div id="content"></div>
+  <button id="Click">click me!</button>
+</body>
+
+</html>
