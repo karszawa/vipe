@@ -28,7 +28,3 @@ app.on('ready', () => {
 app.on("window-all-closed", () => {
   app.quit();
 });
-
-ipcMain.on("click-my-button", (sender, e) => {
-  console.log(e);
-});
