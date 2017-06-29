@@ -11,24 +11,32 @@
 #include <errno.h>
 #include <pthread.h>
 
-const int RECEIVE_DATA_SIZE = 128;
+const int RECEIVE_DATA_SIZE = 4096;
 
-struct SocketAddress {
+struct SendSoundParams {
   int socket;
   struct sockaddr_in *address;
+  FILE *source;
+};
+
+struct ReceiveSoundParams {
+  int socket;
+  FILE *destination;
 };
 
 void send_sounds(void *p) {
-  struct SocketAddress *socket_address = p;
-  int socket = socket_address->socket;
-  struct sockaddr_in *address = socket_address->address;
+  struct SendSoundParams *params = p;
+  int socket = params->socket;
+  struct sockaddr_in *address = params->address;
+  FILE *source = params->source;
 
   char buffer[RECEIVE_DATA_SIZE];
 
   memset(buffer, 0, sizeof(buffer));
 
   while(1) {
-    size_t read_length = read(0, buffer, RECEIVE_DATA_SIZE);
+    // size_t read_length = read(0, buffer, RECEIVE_DATA_SIZE);
+    size_t read_length = fread(buffer, sizeof(char), RECEIVE_DATA_SIZE, source);
 
     if(read_length == 0) {
 			break;
@@ -47,7 +55,9 @@ void send_sounds(void *p) {
 }
 
 void receive_sounds(void *p) {
-  int socket = *(int*)p;
+  struct ReceiveSoundParams *params = p;
+  int socket = params->socket;
+  FILE *destination = params->destination;
 
   char buffer[RECEIVE_DATA_SIZE];
 
@@ -66,7 +76,8 @@ void receive_sounds(void *p) {
       break;
     }
 
-    write(1, buffer, receive_message_size);
+    // write(1, buffer, receive_message_size);
+    fwrite(buffer, sizeof(char), receive_message_size, destination);
   }
 
   shutdown(socket, SHUT_WR);
@@ -74,13 +85,15 @@ void receive_sounds(void *p) {
 
 // argv[1]:IPaddr, argv[2]:port num
 int main(int argc, char** argv) {
-	int send_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	int receive_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-  if(send_socket == -1 || receive_socket == -1){
+  if(sock == -1) {
 		perror("error:socket");
 		return 1;
 	}
+
+  FILE *source = popen("rec -r 44100 -e s -c 1 -b 16 -t raw -", "r");
+  FILE *destination = popen("play -r 44100 -e s -c 1 -b 16 -t raw -", "w");
 
 	struct sockaddr_in server_address;
 
@@ -88,24 +101,27 @@ int main(int argc, char** argv) {
   server_address.sin_port = htons(atoi(argv[2]));
 	server_address.sin_addr.s_addr = inet_addr(argv[1]);
 
-  struct SocketAddress socket_address;
+  struct SendSoundParams send_sound_params;
 
-  socket_address.socket = send_socket;
-  socket_address.address = &server_address;
+  send_sound_params.socket = sock;
+  send_sound_params.address = &server_address;
+  send_sound_params.source = source;
 
-	// FILE* wp = popen("play -r 44100 -e s -c 1 -b 16 -t raw -", "w");
-	// FILE* fp = popen("rec -r 44100 -e s -c 1 -b 16 -t raw -", "r");
+  struct ReceiveSoundParams receive_sound_params;
+
+  receive_sound_params.socket = sock;
+  receive_sound_params.destination = destination;
 
   pthread_t send_thread, receive_thread;
 
-  pthread_create(&send_thread, NULL, (void*)send_sounds, &socket_address);
-  pthread_create(&receive_thread, NULL, (void*)receive_sounds, &receive_socket);
+  pthread_create(&send_thread, NULL, (void*)send_sounds, &send_sound_params);
+  pthread_create(&receive_thread, NULL, (void*)receive_sounds, &receive_sound_params);
 
   pthread_join(send_thread, NULL);
   pthread_join(receive_thread, NULL);
 
-	// pclose(wp);
-	// pclose(fp);
+	pclose(source);
+	pclose(destination);
 
 	return 0;
 }
