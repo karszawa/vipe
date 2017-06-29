@@ -4,6 +4,7 @@ import Connecting from './Connecting.jsx';
 import Connected from './Connected.jsx';
 import styled from 'styled-components';
 import { spawn } from 'child_process';
+import Footer from './Footer.jsx';
 
 const SCENES = {
   SETUP: 'SETUP',
@@ -13,7 +14,7 @@ const SCENES = {
 
 const Container = styled.div`
   width: 100vw;
-  height: 100vh;
+  height: 95vh;
 `;
 
 export default class Main extends React.Component {
@@ -23,7 +24,8 @@ export default class Main extends React.Component {
     this.state = {
       scene: SCENES.SETUP,
       host_ip: '',
-      host_port: ''
+      host_port: '',
+      error: ''
     };
   }
 
@@ -43,14 +45,33 @@ export default class Main extends React.Component {
       console.log(data);
       this.setState({ scene: SCENES.CONNECTED });
     });
+
+    this.process.stderr.on('data', (rawData) => {
+      const data = new Buffer(rawData).toString('utf-8');
+      console.log(data);
+
+      if(this.state.error === '') {
+        this.setState({ error: data });
+      }
+    });
   }
 
   render() {
-    switch(this.state.scene) {
-      case SCENES.SETUP: return <Container><Setup onConnect={ this.onConnect.bind(this) }/></Container>;
-      case SCENES.CONNECTED: return <Container><Connected host_ip={ this.state.host_ip } host_port={ this.state.host_port } /></Container>;
-      case SCENES.CONNECTING: return <Container><Connecting /></Container>;
-      default: return null;
-    }
+    const content = () => {
+      switch(this.state.scene) {
+        case SCENES.SETUP: return <Setup onConnect={ this.onConnect.bind(this) }/>;
+        case SCENES.CONNECTED: return <Connected host_ip={ this.state.host_ip } host_port={ this.state.host_port } />;
+        case SCENES.CONNECTING: return <Connecting />;
+        default: return null;
+      }
+    };
+
+    return (
+      <Container>
+        { content() }
+
+        <Footer styles="height: 20vh;"/>
+      </Container>
+    );
   }
 }
