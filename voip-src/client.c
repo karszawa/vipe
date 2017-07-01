@@ -15,7 +15,12 @@
 
 typedef void (*FUNCTION)(void*);
 
-const int RECEIVE_DATA_SIZE = 1024;
+const int RECEIVE_DATA_SIZE = 4096;
+
+struct Params {
+  int socket;
+  FILE *source, *destination;
+};
 
 int establish_connect(char* ip_address, int port) {
   int s = socket(PF_INET, SOCK_STREAM, 0);
@@ -39,15 +44,18 @@ int establish_connect(char* ip_address, int port) {
 // Thread 2: receive sounds
 
 void send_sounds(void *p) {
-  int soc = *(int*)p;
+  struct Params *params = p;
+  int soc = params->socket;
+  FILE *source = params->source;
 
   while(1) {
-    char tmp[RECEIVE_DATA_SIZE] = { 0 };
+    char tmp[RECEIVE_DATA_SIZE];
 
-    int n = read(0, tmp, RECEIVE_DATA_SIZE);
+    // int n = read(0, tmp, RECEIVE_DATA_SIZE);
+    int n = fread(tmp, sizeof(char), RECEIVE_DATA_SIZE, source);
 
 #ifdef DEBUG
-    fprintf(stderr, "\x1b[31m%s\x1b[37m", tmp);
+    // fprintf(stderr, "\x1b[31m%s\x1b[37m", tmp);
 #endif
 
     if(n > 0) {
@@ -65,7 +73,9 @@ void send_sounds(void *p) {
 }
 
 void receive_sounds(void *p) {
-  int soc = *(int*)p;
+  struct Params *params = p;
+  int soc = params->socket;
+  FILE *destination = params->destination;
 
   while(1) {
     char tmp[RECEIVE_DATA_SIZE] = { 0 };
@@ -73,11 +83,12 @@ void receive_sounds(void *p) {
     int n = read(soc, tmp, RECEIVE_DATA_SIZE);
 
 #ifdef DEBUG
-    fprintf(stderr, "\x1b[33m%s\x1b[37m", tmp);
+    // fprintf(stderr, "\x1b[33m%s\x1b[37m", tmp);
 #endif
 
     if(n > 0) {
-      write(1, tmp, strlen(tmp));
+      // write(1, tmp, strlen(tmp));
+      fwrite(tmp, sizeof(char), n, destination);
     } else if(n == 0) {
       break;
     } else {
@@ -91,7 +102,11 @@ void receive_sounds(void *p) {
 
 // ./client ip_address port
 int main(int argc, char **argv) {
-  int soc = establish_connect(argv[1], atoi(argv[2]));
+  struct Params params;
+
+  params.socket = establish_connect(argv[1], atoi(argv[2]));
+  params.source = popen("rec -r 44100 -e s -c 1 -b 16 -t raw -", "r");
+  params.destination = popen("play -r 44100 -e s -c 1 -b 16 -t raw -", "w");
 
   FUNCTION functions[2] = { send_sounds, receive_sounds };
   pthread_t threads[2];
@@ -99,7 +114,7 @@ int main(int argc, char **argv) {
   fprintf(stderr, "===CREATING THREADS===\n");
 
   for(int i = 0; i < 2; i++) {
-    int ret = pthread_create(threads + i, NULL, (void*)functions[i], &soc);
+    int ret = pthread_create(threads + i, NULL, (void*)functions[i], &params);
 
     if(ret != 0) {
       err(EXIT_FAILURE, "Can not create thread %d: %s", i, strerror(ret));

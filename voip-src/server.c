@@ -18,7 +18,7 @@
 typedef void (*FUNCTION)(void*);
 
 const int MAX_CONNECTION_SIZE = 8;
-const int RECEIVE_DATA_SIZE = 1024;
+const int RECEIVE_DATA_SIZE = 4096;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct Network {
@@ -57,7 +57,7 @@ void receive_sound_from_clients(void *p) {
     char tmp[RECEIVE_DATA_SIZE] = { 0 };
 
     int n = read(network->sockets[target_index], tmp, RECEIVE_DATA_SIZE);
-    fprintf(stderr, "\x1b[33m%s\x1b[37m", tmp);
+    // fprintf(stderr, "\x1b[33m%s\x1b[37m", tmp);
 
     if(n <= 0) {
       fprintf(stderr, "FAILED TO READ");
@@ -70,10 +70,10 @@ void receive_sound_from_clients(void *p) {
       if(i == target_index) {
         continue;
       }
-
-      if(network->message_queue[i][0] != '\0') {
-        continue;
-      }
+      // 
+      // if(network->message_queue[i][0] != '\0') {
+      //   continue;
+      // }
 
       strcpy(network->message_queue[i], tmp);
     }
@@ -87,7 +87,7 @@ void broadcast(void *p) {
 
   while(1) {
     if(network->message_queue[target_index][0] != '\0') {
-      fprintf(stderr, "\x1b[31m%s\x1b[37m", network->message_queue[target_index]);
+      // fprintf(stderr, "\x1b[31m%s\x1b[37m", network->message_queue[target_index]);
       write(network->sockets[target_index], network->message_queue[target_index], strlen(network->message_queue[target_index]));
       network->message_queue[target_index][0] = '\0';
     }
@@ -106,6 +106,8 @@ void wait_connection() {
   struct Network network;
   pthread_t threads[MAX_CONNECTION_SIZE * 2];
   struct CenteredNetwork centered_networks[MAX_CONNECTION_SIZE];
+
+  network.sockets_size = 0;
 
   int soc = socket(PF_INET, SOCK_STREAM, 0);
   struct sockaddr_in addr;
