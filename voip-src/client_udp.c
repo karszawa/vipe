@@ -10,33 +10,33 @@
 #include <err.h>
 #include <errno.h>
 #include <pthread.h>
+#include "sound_manager.c"
 
-const int RECEIVE_DATA_SIZE = 4096;
+#define RECEIVE_DATA_SIZE 4096
 
 struct SendSoundParams {
   int socket;
   struct sockaddr_in *address;
-  FILE *source;
+  struct SoundManager sound_manager;
 };
 
 struct ReceiveSoundParams {
   int socket;
-  FILE *destination;
+  struct SoundManager sound_manager;
 };
 
 void send_sounds(void *p) {
   struct SendSoundParams *params = p;
   int socket = params->socket;
   struct sockaddr_in *address = params->address;
-  FILE *source = params->source;
+  struct SoundManager sound_manager = params->sound_manager;
 
   char buffer[RECEIVE_DATA_SIZE];
 
   memset(buffer, 0, sizeof(buffer));
 
   while(1) {
-    // size_t read_length = read(0, buffer, RECEIVE_DATA_SIZE);
-    size_t read_length = fread(buffer, sizeof(char), RECEIVE_DATA_SIZE, source);
+    size_t read_length = recSound(sound_manager, buffer);
 
     if(read_length == 0) {
 			break;
@@ -57,7 +57,8 @@ void send_sounds(void *p) {
 void receive_sounds(void *p) {
   struct ReceiveSoundParams *params = p;
   int socket = params->socket;
-  FILE *destination = params->destination;
+  struct SoundManager sound_manager = params->sound_manager;
+
 
   char buffer[RECEIVE_DATA_SIZE];
 
@@ -77,7 +78,7 @@ void receive_sounds(void *p) {
     }
 
     // write(1, buffer, receive_message_size);
-    fwrite(buffer, sizeof(char), receive_message_size, destination);
+    playSound(sound_manager, buffer);
   }
 
   shutdown(socket, SHUT_WR);
@@ -92,8 +93,9 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-  FILE *source = popen("rec -r 44100 -e s -c 1 -b 16 -t raw -", "r");
-  FILE *destination = popen("play -r 44100 -e s -c 1 -b 16 -t raw -", "w");
+  struct SoundManager sound_manager;
+
+  openSoundManager(&sound_manager);
 
 	struct sockaddr_in server_address;
 
@@ -105,12 +107,12 @@ int main(int argc, char** argv) {
 
   send_sound_params.socket = sock;
   send_sound_params.address = &server_address;
-  send_sound_params.source = source;
+  send_sound_params.sound_manager = sound_manager;
 
   struct ReceiveSoundParams receive_sound_params;
 
   receive_sound_params.socket = sock;
-  receive_sound_params.destination = destination;
+  receive_sound_params.sound_manager = sound_manager;
 
   pthread_t send_thread, receive_thread;
 
@@ -120,8 +122,7 @@ int main(int argc, char** argv) {
   pthread_join(send_thread, NULL);
   pthread_join(receive_thread, NULL);
 
-	pclose(source);
-	pclose(destination);
+	closeSoundManager(&sound_manager);
 
 	return 0;
 }
