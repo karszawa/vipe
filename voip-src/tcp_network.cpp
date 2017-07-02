@@ -10,7 +10,8 @@
 #include <err.h>
 #include <errno.h>
 #include <pthread.h>
-// #include <future>
+#include <future>
+#include <vector>
 
 #define MAX_CONNECTION_SIZE 8
 #define MAX_MESSAGE_SIZE 1024
@@ -41,12 +42,7 @@ struct WaitMessageServerParams {
   WAIT_MESSAGE_FUNC handler;
 };
 
-void _wait_message_server(void *p) {
-  struct WaitMessageServerParams *params = (struct WaitMessageServerParams*)p;
-  struct Network *network = params->network;
-  int target_index = params->target_index;
-  WAIT_MESSAGE_FUNC handler = params->handler;
-
+void _wait_message_server(struct Network *network, int target_index, WAIT_MESSAGE_FUNC handler) {
   char buffer[MAX_MESSAGE_SIZE];
 
   while(1) {
@@ -64,7 +60,7 @@ void _wait_message_server(void *p) {
 }
 
 void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
-  pthread_t threads[MAX_CONNECTION_SIZE];
+  std::vector<std::thread> threads;
 
   initNetwork(network);
 
@@ -81,8 +77,6 @@ void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
   }
 
   listen(soc, MAX_CONNECTION_SIZE);
-
-  struct WaitMessageServerParams params[MAX_CONNECTION_SIZE];
 
   for(int i = 0; i < MAX_CONNECTION_SIZE; i++) {
     struct sockaddr_in client;
@@ -101,11 +95,11 @@ void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
 
     fprintf(stderr, "NEW TCP CONNECTION: %d\n", network->sockets[i]);
 
-    params[i].network = network;
-    params[i].target_index = i;
-    params[i].handler = handler;
+    threads.push_back(std::thread([=]{ _wait_message_server(network, i, handler); }));
+  }
 
-    establish_thread(threads + i, (void*)_wait_message_server, params + i);
+  for(auto &thread : threads) {
+    thread.join();
   }
 }
 
@@ -128,23 +122,13 @@ void broadcast_message(const struct Network *network, const char *message, const
   }
 }
 
-struct WaitMessageClientParams {
-  int socket;
-  char server_address[32];
-  WAIT_MESSAGE_FUNC handler;
-};
-
-void _wait_message_client(void *p) {
-  struct WaitMessageClientParams *params = (struct WaitMessageClientParams*)p;
-  WAIT_MESSAGE_FUNC handler = params->handler;
-  int soc = params->socket;
-
+void _wait_message_client(int socket, const char server_address[32], WAIT_MESSAGE_FUNC handler) {
   char buffer[MAX_MESSAGE_SIZE];
 
   while(1) {
     memset(buffer, 0, sizeof(buffer));
 
-    int message_size = read(soc, buffer, MAX_MESSAGE_SIZE);
+    int message_size = read(socket, buffer, MAX_MESSAGE_SIZE);
     printf("_wait_message_client: %s\n", buffer);
 
     if(message_size < 0) {
@@ -152,33 +136,26 @@ void _wait_message_client(void *p) {
       break;
     }
 
-    handler(params->server_address, buffer, message_size);
+    handler(server_address, buffer, message_size);
   }
 }
 
-void connect_to_server(int *soc, const char *server_address, WAIT_MESSAGE_FUNC handler) {
-  *soc = socket(PF_INET, SOCK_STREAM, 0);
+std::thread connect_to_server(const char *server_address, WAIT_MESSAGE_FUNC handler) {
+  int soc = socket(PF_INET, SOCK_STREAM, 0);
   struct sockaddr_in address;
 
   address.sin_family = AF_INET;
   inet_aton(server_address, &address.sin_addr);
   address.sin_port = htons(51515);
 
-  if(connect(*soc, (struct sockaddr *)&address, sizeof(address)) == 0) {
-    fprintf(stderr, "NEW TCP CONNECTION: %s(%d)\n", server_address, *soc);
+  if(connect(soc, (struct sockaddr *)&address, sizeof(address)) == 0) {
+    fprintf(stderr, "NEW TCP CONNECTION: %s(%d)\n", server_address, soc);
   } else {
     fprintf(stderr, "FAIL TO CONNECT: %s\n", server_address);
     exit(1);
   }
 
-  pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
-  struct WaitMessageClientParams *params = (struct WaitMessageClientParams*)malloc(sizeof(struct WaitMessageClientParams));
-
-  params->socket = *soc;
-  params->handler = handler;
-  strcpy(params->server_address, server_address);
-
-  pthread_create(thread, NULL, (void*)_wait_message_client, params);
+  return std::thread([=]{ _wait_message_client(soc, server_address, handler); });
 }
 
 void send_message(int soc, const char *message, const int message_size) {

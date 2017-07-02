@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
+#include <future>
 #include "my_time.cpp"
 #include "voice_communication_network.cpp"
 #include "common.cpp"
@@ -51,12 +52,7 @@ int main(int argc, char **argv) {
 
   struct Network network;
 
-  pthread_t thread;
-  struct WaitConnectionWrapperParams wait_connection_wrapper_params;
-  wait_connection_wrapper_params.network = &network;
-  wait_connection_wrapper_params.handler = message_handler;
-
-  pthread_create(&thread, NULL, (void*)wait_connection_wrapper, &wait_connection_wrapper_params);
+  auto wait_connection_thread = std::thread([&]{ wait_connection(&network, message_handler); });
 
   struct timespec begin, end;
   clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
@@ -79,7 +75,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  pthread_join(thread, NULL);
+  wait_connection_thread.join();
 
   return 0;
 }
