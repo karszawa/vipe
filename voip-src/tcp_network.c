@@ -10,6 +10,7 @@
 #include <err.h>
 #include <errno.h>
 #include <pthread.h>
+// #include <future>
 
 #define MAX_CONNECTION_SIZE 8
 #define MAX_MESSAGE_SIZE 1024
@@ -53,7 +54,7 @@ void _wait_message_server(void *p) {
 
     int message_size = read(network->sockets[target_index], buffer, MAX_MESSAGE_SIZE);
 
-    if(message_size <= 0) {
+    if(message_size < 0) {
       fprintf(stderr, "FAILED TO READ");
       break;
     }
@@ -81,6 +82,8 @@ void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
 
   listen(soc, MAX_CONNECTION_SIZE);
 
+  struct WaitMessageServerParams params[MAX_CONNECTION_SIZE];
+
   for(int i = 0; i < MAX_CONNECTION_SIZE; i++) {
     struct sockaddr_in client;
     socklen_t len = sizeof(struct sockaddr_in);
@@ -98,13 +101,11 @@ void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
 
     fprintf(stderr, "NEW TCP CONNECTION: %d\n", network->sockets[i]);
 
-    struct WaitMessageServerParams params;
+    params[i].network = network;
+    params[i].target_index = i;
+    params[i].handler = handler;
 
-    params.network = network;
-    params.target_index = i;
-    params.handler = handler;
-
-    establish_thread(threads + i, (void*)_wait_message_server, &params);
+    establish_thread(threads + i, (void*)_wait_message_server, params + i);
   }
 }
 
@@ -144,8 +145,9 @@ void _wait_message_client(void *p) {
     memset(buffer, 0, sizeof(buffer));
 
     int message_size = read(soc, buffer, MAX_MESSAGE_SIZE);
+    printf("_wait_message_client: %s\n", buffer);
 
-    if(message_size <= 0) {
+    if(message_size < 0) {
       fprintf(stderr, "FAILED TO READ");
       break;
     }
@@ -163,20 +165,20 @@ void connect_to_server(int *soc, const char *server_address, WAIT_MESSAGE_FUNC h
   address.sin_port = htons(51515);
 
   if(connect(*soc, (struct sockaddr *)&address, sizeof(address)) == 0) {
-    fprintf(stderr, "NEW TCP CONNECTION: %s\n", server_address);
+    fprintf(stderr, "NEW TCP CONNECTION: %s(%d)\n", server_address, *soc);
   } else {
     fprintf(stderr, "FAIL TO CONNECT: %s\n", server_address);
     exit(1);
   }
 
-  pthread_t thread;
-  struct WaitMessageClientParams params;
+  pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
+  struct WaitMessageClientParams *params = (struct WaitMessageClientParams*)malloc(sizeof(struct WaitMessageClientParams));
 
-  params.socket = *soc;
-  params.handler = handler;
-  strcpy(params.server_address, server_address);
+  params->socket = *soc;
+  params->handler = handler;
+  strcpy(params->server_address, server_address);
 
-  establish_thread(&thread, (void*)_wait_message_client, &params);
+  pthread_create(thread, NULL, (void*)_wait_message_client, params);
 }
 
 void send_message(int soc, const char *message, const int message_size) {

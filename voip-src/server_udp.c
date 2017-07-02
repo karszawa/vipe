@@ -40,6 +40,7 @@ void send_connection_list(const struct Network network, const struct VoiceCommun
     }
   }
 
+  fprintf(stderr, "%s\n", message);
   broadcast_message(&network, message, strlen(message));
 }
 
