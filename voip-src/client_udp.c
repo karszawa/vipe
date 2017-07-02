@@ -11,8 +11,10 @@
 #include <errno.h>
 #include <pthread.h>
 #include "sound_manager.c"
+#include "my_time.c"
 
-#define RECEIVE_DATA_SIZE 4096
+#define SEND_DATA_SIZE 2200
+#define RECEIVE_DATA_SIZE 40000
 
 struct SendSoundParams {
   int socket;
@@ -31,7 +33,7 @@ void send_sounds(void *p) {
   struct sockaddr_in *address = params->address;
   struct SoundManager sound_manager = params->sound_manager;
 
-  char buffer[RECEIVE_DATA_SIZE];
+  char buffer[SEND_DATA_SIZE];
 
   memset(buffer, 0, sizeof(buffer));
 
@@ -40,7 +42,7 @@ void send_sounds(void *p) {
 
     if(read_length == 0) {
 			break;
-		} else if (read_length == -1){
+		} else if (read_length == -1) {
 			perror("send error");
 			break;
 		}
@@ -59,7 +61,6 @@ void receive_sounds(void *p) {
   int socket = params->socket;
   struct SoundManager sound_manager = params->sound_manager;
 
-
   char buffer[RECEIVE_DATA_SIZE];
 
   memset(buffer, 0, sizeof(buffer));
@@ -70,15 +71,15 @@ void receive_sounds(void *p) {
   while(1) {
     int receive_message_size = recvfrom(socket, buffer, RECEIVE_DATA_SIZE, 0, (struct sockaddr *)&address, &address_size);
 
-    if(receive_message_size == 0) {
-      break;
-    } else if(receive_message_size == -1) {
+    if(receive_message_size == -1) {
       perror("write error");
       break;
     }
 
+    printf("%d\n", receive_message_size);
+
     // write(1, buffer, receive_message_size);
-    playSound(sound_manager, buffer);
+    playSound(sound_manager, buffer, receive_message_size);
   }
 
   shutdown(socket, SHUT_WR);
