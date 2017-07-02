@@ -11,7 +11,6 @@
 #include <errno.h>
 #include <future>
 #include "sound_manager.cpp"
-#include "my_time.cpp"
 #include "tcp_network.cpp"
 
 #define SEND_DATA_SIZE 2200
@@ -85,8 +84,8 @@ int main(int argc, char** argv) {
   server_address.sin_port = htons(54321);
 	server_address.sin_addr.s_addr = inet_addr(argv[1]);
 
-  auto send_thread = std::thread([=]{ send_sounds(sock, server_address, sound_manager); });
-  auto recv_thread = std::thread([=]{ receive_sounds(sock, sound_manager); });
+  auto send_thread = std::thread([=, &sound_manager]{ send_sounds(sock, server_address, sound_manager); });
+  auto recv_thread = std::thread([=, &sound_manager]{ receive_sounds(sock, sound_manager); });
 
   auto message_thread = connect_to_server(argv[1], message_handler);
 

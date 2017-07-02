@@ -2,16 +2,22 @@
 
 #define MAX_DATA_SIZE 44100 * 2 * 4
 
-struct Stack {
+class Stack {
+public:
+
   char pile[MAX_DATA_SIZE];
   int stack_size;
+
+  Stack() : stack_size(0) {
+
+  }
+
+  void reset() {
+    this->stack_size = 0;
+  }
+
+  void push_data(char *data, size_t data_size) {
+    memcpy(this->pile + this->stack_size, data, data_size);
+    this->stack_size += data_size;
+  }
 };
-
-void resetStack(struct Stack *stack) {
-  stack->stack_size = 0;
-}
-
-void pushDataToStack(struct Stack *stack, char *data, int data_size) {
-  memcpy(stack->pile + stack->stack_size, data, data_size);
-  stack->stack_size += data_size;
-}

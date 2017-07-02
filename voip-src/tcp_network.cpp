@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <err.h>
 #include <errno.h>
-#include <pthread.h>
 #include <future>
 #include <vector>
 
@@ -18,31 +17,19 @@
 
 typedef void (*WAIT_MESSAGE_FUNC)(const char*, const char*, int);
 
-void establish_thread(pthread_t* thread, void *(*start_routine)(void*), void* args) {
-  int ret = pthread_create(thread, NULL, start_routine, args);
+class Network {
+public:
 
-  if(ret != 0) {
-    err(EXIT_FAILURE, "%s", strerror(ret));
-  }
-}
-
-struct Network {
   int sockets[MAX_CONNECTION_SIZE];
   char client_addresses[MAX_CONNECTION_SIZE][32];
   int sockets_size;
+
+  Network() : sockets_size(0) {
+
+  }
 };
 
-void initNetwork(struct Network *network) {
-  network->sockets_size = 0;
-}
-
-struct WaitMessageServerParams {
-  struct Network *network;
-  int target_index;
-  WAIT_MESSAGE_FUNC handler;
-};
-
-void _wait_message_server(struct Network *network, int target_index, WAIT_MESSAGE_FUNC handler) {
+void _wait_message_server(Network *network, int target_index, WAIT_MESSAGE_FUNC handler) {
   char buffer[MAX_MESSAGE_SIZE];
 
   while(1) {
@@ -59,10 +46,8 @@ void _wait_message_server(struct Network *network, int target_index, WAIT_MESSAG
   }
 }
 
-void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
+void wait_connection(Network *network, WAIT_MESSAGE_FUNC handler) {
   std::vector<std::thread> threads;
-
-  initNetwork(network);
 
   struct sockaddr_in address;
 
@@ -103,20 +88,7 @@ void wait_connection(struct Network *network, WAIT_MESSAGE_FUNC handler) {
   }
 }
 
-struct WaitConnectionWrapperParams {
-  struct Network *network;
-  WAIT_MESSAGE_FUNC handler;
-};
-
-void wait_connection_wrapper(void *p) {
-  struct WaitConnectionWrapperParams *params = (struct WaitConnectionWrapperParams*)p;
-  struct Network *network = params->network;
-  WAIT_MESSAGE_FUNC handler = params->handler;
-
-  wait_connection(network, handler);
-}
-
-void broadcast_message(const struct Network *network, const char *message, const int message_size) {
+void broadcast_message(const Network *network, const char *message, const int message_size) {
   for(int i = 0; i < network->sockets_size; i++) {
     write(network->sockets[i], message, message_size);
   }
@@ -129,7 +101,6 @@ void _wait_message_client(int socket, const char server_address[32], WAIT_MESSAG
     memset(buffer, 0, sizeof(buffer));
 
     int message_size = read(socket, buffer, MAX_MESSAGE_SIZE);
-    printf("_wait_message_client: %s\n", buffer);
 
     if(message_size < 0) {
       fprintf(stderr, "FAILED TO READ");

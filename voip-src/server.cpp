@@ -9,11 +9,10 @@
 #include <unistd.h>
 #include <err.h>
 #include <errno.h>
-#include <pthread.h>
 #include <time.h>
 #include <math.h>
 #include <future>
-#include "my_time.cpp"
+#include <chrono>
 #include "voice_communication_network.cpp"
 #include "common.cpp"
 #include "tcp_network.cpp"
@@ -26,17 +25,17 @@ void message_handler(const char* address, const char* message, int message_size)
   }
 }
 
-void send_connection_list(const struct Network network, const struct VoiceCommuniactionNetwork *vcn) {
+void send_connection_list(const struct Network network, const VoiceCommuniactionNetwork vcn) {
   char message[MAX_MESSAGE_SIZE];
 
   memset(message, 0, sizeof(message));
 
   strcat(message, "CONNECTIONS: ");
 
-  for(int i = 0; i < vcn->client_size; i++) {
-    strcat(message, inet_ntoa(vcn->clients[i].sin_addr));
+  for(int i = 0; i < vcn.client_size; i++) {
+    strcat(message, inet_ntoa(vcn.clients[i].sin_addr));
 
-    if(i + 1 != vcn->client_size) {
+    if(i + 1 != vcn.client_size) {
       strcat(message, ",");
     }
   }
@@ -46,32 +45,28 @@ void send_connection_list(const struct Network network, const struct VoiceCommun
 }
 
 int main(int argc, char **argv) {
-  struct VoiceCommuniactionNetwork vcn;
-
-  initVCN(&vcn);
+  const auto DISPATCH_DURATION = std::chrono::milliseconds(50);
+  VoiceCommuniactionNetwork vcn;
 
   struct Network network;
 
   auto wait_connection_thread = std::thread([&]{ wait_connection(&network, message_handler); });
 
-  struct timespec begin, end;
-  clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+  auto last_time = std::chrono::system_clock::now();
 
   puts("START: Waiting for the first connection.");
 
   while(1) {
-    int is_new_client = receiveFromClient(&vcn);
+    int is_new_client = vcn.receiveFromClient();
 
     if(is_new_client) {
-      send_connection_list(network, &vcn);
+      send_connection_list(network, vcn);
     }
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    if(std::chrono::system_clock::now() - last_time > DISPATCH_DURATION) {
+      last_time = std::chrono::system_clock::now();
 
-    if(-get_difference_of_time(end, begin) > 50) {
-      clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
-
-      dispatchToClient(&vcn);
+      vcn.dispatchToClient();
     }
   }
 
