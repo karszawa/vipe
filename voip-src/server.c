@@ -10,147 +10,78 @@
 #include <err.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
+#include <math.h>
+#include "my_time.c"
+#include "voice_communication_network.c"
+#include "common.c"
+#include "tcp_network.c"
 
-// Thread 1: waiting connection request from clients and establish connection
-// Thread 2: receive sound from clients
-// Thread 3: broadcast sound
+void message_handler(const char* address, const char* message, int message_size) {
+  if(start_with(message, "CHANGE NAME: ")) {
 
-typedef void (*FUNCTION)(void*);
+  } else if(start_with(message, "CHAT: ")) {
 
-const int MAX_CONNECTION_SIZE = 8;
-const int RECEIVE_DATA_SIZE = 4096;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct Network {
-  int sockets[MAX_CONNECTION_SIZE];
-  int sockets_size;
-  char message_queue[MAX_CONNECTION_SIZE][RECEIVE_DATA_SIZE];
-};
-
-struct CenteredNetwork {
-  struct Network *network;
-  int target_index;
-};
-
-void lock() {
-  int ret = pthread_mutex_lock(&mutex);
-
-  if(ret != 0) {
-    errc(EXIT_FAILURE, ret, "can not lock");
   }
 }
 
-void unlock() {
-  int ret = pthread_mutex_unlock(&mutex);
+void send_connection_list(const struct Network network, const struct VoiceCommuniactionNetwork *vcn) {
+  char message[MAX_MESSAGE_SIZE];
 
-  if(ret != 0) {
-    errc(EXIT_FAILURE, ret, "can not unlock");
-  }
-}
+  memset(message, 0, sizeof(message));
 
-void receive_sound_from_clients(void *p) {
-  struct CenteredNetwork *c = (struct CenteredNetwork*)p;
-  struct Network *network = c->network;
-  int target_index = c->target_index;
+  strcat(message, "CONNECTIONS: ");
 
-  while(1) {
-    char tmp[RECEIVE_DATA_SIZE] = { 0 };
+  for(int i = 0; i < vcn->client_size; i++) {
+    strcat(message, inet_ntoa(vcn->clients[i].sin_addr));
 
-    int n = read(network->sockets[target_index], tmp, RECEIVE_DATA_SIZE);
-    // fprintf(stderr, "\x1b[33m%s\x1b[37m", tmp);
-
-    if(n <= 0) {
-      fprintf(stderr, "FAILED TO READ");
-      break;
-    }
-
-    const int sockets_size = network->sockets_size;
-
-    for(int i = 0; i < sockets_size; i++) {
-      if(i == target_index) {
-        continue;
-      }
-      // 
-      // if(network->message_queue[i][0] != '\0') {
-      //   continue;
-      // }
-
-      strcpy(network->message_queue[i], tmp);
+    if(i + 1 != vcn->client_size) {
+      strcat(message, ",");
     }
   }
-}
 
-void broadcast(void *p) {
-  struct CenteredNetwork *c = (struct CenteredNetwork*)p;
-  struct Network *network = c->network;
-  int target_index = c->target_index;
-
-  while(1) {
-    if(network->message_queue[target_index][0] != '\0') {
-      // fprintf(stderr, "\x1b[31m%s\x1b[37m", network->message_queue[target_index]);
-      write(network->sockets[target_index], network->message_queue[target_index], strlen(network->message_queue[target_index]));
-      network->message_queue[target_index][0] = '\0';
-    }
-  }
-}
-
-void establish_thread(pthread_t* thread, void *(*start_routine)(void*), void* args) {
-  int ret = pthread_create(thread, NULL, start_routine, args);
-
-  if(ret != 0) {
-    err(EXIT_FAILURE, "%s", strerror(ret));
-  }
-}
-
-void wait_connection() {
-  struct Network network;
-  pthread_t threads[MAX_CONNECTION_SIZE * 2];
-  struct CenteredNetwork centered_networks[MAX_CONNECTION_SIZE];
-
-  network.sockets_size = 0;
-
-  int soc = socket(PF_INET, SOCK_STREAM, 0);
-  struct sockaddr_in addr;
-
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(54321);
-  addr.sin_addr.s_addr = INADDR_ANY;
-
-  if(bind(soc, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-    perror("bind");
-  }
-
-  listen(soc, MAX_CONNECTION_SIZE);
-
-  for(int i = 0; i < MAX_CONNECTION_SIZE; i++) {
-    struct sockaddr_in client_addr;
-    socklen_t len = sizeof(struct sockaddr_in);
-
-    network.sockets[i] = accept(soc, (struct sockaddr *) &client_addr, &len);
-
-    if(network.sockets[i] < -1) {
-      fprintf(stderr, "CONNECTION ERROR");
-      i--;
-      continue;
-    }
-
-    network.sockets_size = network.sockets_size + 1;
-    network.message_queue[i][0] = '\0';
-
-    fprintf(stderr, "New socket(%d): %d\n", network.sockets_size, network.sockets[i]);
-
-    centered_networks[i].network = &network;
-    centered_networks[i].target_index = i;
-
-    establish_thread(threads + i * 2 + 1, (void*)broadcast, &centered_networks[i]);
-    establish_thread(threads + i * 2, (void*)receive_sound_from_clients, &centered_networks[i]);
-  }
-
-  fprintf(stderr, "MAX CONNECTION\n");
+  fprintf(stderr, "%s\n", message);
+  broadcast_message(&network, message, strlen(message));
 }
 
 int main(int argc, char **argv) {
-  wait_connection();
+  struct VoiceCommuniactionNetwork vcn;
+
+  initVCN(&vcn);
+
+  struct Network network;
+
+  pthread_t thread;
+  struct WaitConnectionWrapperParams wait_connection_wrapper_params;
+  wait_connection_wrapper_params.network = &network;
+  wait_connection_wrapper_params.handler = message_handler;
+
+  pthread_create(&thread, NULL, (void*)wait_connection_wrapper, &wait_connection_wrapper_params);
+
+  struct timespec begin, end;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+
+  puts("START: Waiting for the first connection.");
+
+  while(1) {
+    int is_new_client = receiveFromClient(&vcn);
+
+    if(is_new_client) {
+      send_connection_list(network, &vcn);
+    }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+    if(-get_difference_of_time(end, begin) > 50) {
+      clock_gettime(CLOCK_MONOTONIC_RAW, &begin);
+
+      dispatchToClient(&vcn);
+    }
+  }
+
+  pthread_join(thread, NULL);
 
   return 0;
 }
+
+// TODO: fish: './server_udp' terminated by signal SIGBUS (Misaligned address error)

@@ -10,126 +10,129 @@
 #include <err.h>
 #include <errno.h>
 #include <pthread.h>
+#include "sound_manager.c"
+#include "my_time.c"
+#include "tcp_network.c"
 
-// #define DEBUG
+#define SEND_DATA_SIZE 2200
+#define RECEIVE_DATA_SIZE 40000
 
-typedef void (*FUNCTION)(void*);
-
-const int RECEIVE_DATA_SIZE = 4096;
-
-struct Params {
-  int socket;
-  FILE *source, *destination;
-};
-
-int establish_connect(char* ip_address, int port) {
-  int s = socket(PF_INET, SOCK_STREAM, 0);
-  struct sockaddr_in addr;
-
-  addr.sin_family = AF_INET;
-  inet_aton(ip_address, &addr.sin_addr);
-  addr.sin_port = htons(port);
-
-  if(connect(s, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
-    fprintf(stderr, "SUCCESSFULL CONNECTION: %s\n", ip_address);
-  } else {
-    fprintf(stderr, "FAILED CONNECTION(ERRORNO=%d): %s\n", errno, ip_address);
-    exit(1);
-  }
-
-  return s;
+void message_handler(const char* address, const char* message, int message_size) {
+  // CHANGE NAME new name
+  // CHAT content
+  printf("%s", message);
 }
 
-// Thread 1: send sounds
-// Thread 2: receive sounds
+struct SendSoundParams {
+  int socket;
+  struct sockaddr_in *address;
+  struct SoundManager sound_manager;
+};
+
+struct ReceiveSoundParams {
+  int socket;
+  struct SoundManager sound_manager;
+};
 
 void send_sounds(void *p) {
-  struct Params *params = p;
-  int soc = params->socket;
-  FILE *source = params->source;
+  struct SendSoundParams *params = p;
+  int socket = params->socket;
+  struct sockaddr_in *address = params->address;
+  struct SoundManager sound_manager = params->sound_manager;
+
+  char buffer[SEND_DATA_SIZE];
+
+  memset(buffer, 0, sizeof(buffer));
 
   while(1) {
-    char tmp[RECEIVE_DATA_SIZE];
+    size_t read_length = recSound(sound_manager, buffer);
 
-    // int n = read(0, tmp, RECEIVE_DATA_SIZE);
-    int n = fread(tmp, sizeof(char), RECEIVE_DATA_SIZE, source);
+    if(read_length == 0) {
+			break;
+		} else if (read_length == -1) {
+			perror("send error");
+			break;
+		}
 
-#ifdef DEBUG
-    // fprintf(stderr, "\x1b[31m%s\x1b[37m", tmp);
-#endif
-
-    if(n > 0) {
-      write(soc, tmp, n);
-    } else if(n == 0) {
-      close(soc);
+    if(sendto(socket, buffer, read_length, 0, (struct sockaddr *)address, sizeof(*address)) < 0) {
+      fprintf(stderr, "SENDTO ERROR\n");
       break;
-    } else {
-      fprintf(stderr, "ERROR OCCURS WHILE READING FROM STANDARD INPUT\n");
-      exit(1);
     }
   }
 
-  fprintf(stderr, "FINISH SENDING SOUNDS\n");
+  shutdown(socket, SHUT_WR);
 }
 
 void receive_sounds(void *p) {
-  struct Params *params = p;
-  int soc = params->socket;
-  FILE *destination = params->destination;
+  struct ReceiveSoundParams *params = p;
+  int socket = params->socket;
+  struct SoundManager sound_manager = params->sound_manager;
+
+  char buffer[RECEIVE_DATA_SIZE];
+
+  memset(buffer, 0, sizeof(buffer));
+
+  struct sockaddr_in address;
+  socklen_t address_size;
 
   while(1) {
-    char tmp[RECEIVE_DATA_SIZE] = { 0 };
+    int receive_message_size = recvfrom(socket, buffer, RECEIVE_DATA_SIZE, 0, (struct sockaddr *)&address, &address_size);
 
-    int n = read(soc, tmp, RECEIVE_DATA_SIZE);
-
-#ifdef DEBUG
-    // fprintf(stderr, "\x1b[33m%s\x1b[37m", tmp);
-#endif
-
-    if(n > 0) {
-      // write(1, tmp, strlen(tmp));
-      fwrite(tmp, sizeof(char), n, destination);
-    } else if(n == 0) {
+    if(receive_message_size == -1) {
+      perror("write error");
       break;
-    } else {
-      fprintf(stderr, "ERROR OCCURS WHILE READING FROM SOCKET\n");
-      exit(1);
     }
+
+    // write(1, buffer, receive_message_size);
+    playSound(sound_manager, buffer, receive_message_size);
   }
 
-  fprintf(stderr, "FINISH RECEIVING SOUNDS\n");
+  shutdown(socket, SHUT_WR);
 }
 
-// ./client ip_address port
-int main(int argc, char **argv) {
-  struct Params params;
+// argv[1]:IPaddr
+int main(int argc, char** argv) {
+	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
-  params.socket = establish_connect(argv[1], atoi(argv[2]));
-  params.source = popen("rec -r 44100 -e s -c 1 -b 16 -t raw -", "r");
-  params.destination = popen("play -r 44100 -e s -c 1 -b 16 -t raw -", "w");
+  if(sock == -1) {
+		perror("error:socket");
+		return 1;
+	}
 
-  FUNCTION functions[2] = { send_sounds, receive_sounds };
-  pthread_t threads[2];
+  struct SoundManager sound_manager;
 
-  fprintf(stderr, "===CREATING THREADS===\n");
+  openSoundManager(&sound_manager);
 
-  for(int i = 0; i < 2; i++) {
-    int ret = pthread_create(threads + i, NULL, (void*)functions[i], &params);
+	struct sockaddr_in server_address;
 
-    if(ret != 0) {
-      err(EXIT_FAILURE, "Can not create thread %d: %s", i, strerror(ret));
-    }
-  }
+  server_address.sin_family = AF_INET;
+  server_address.sin_port = htons(54321);
+	server_address.sin_addr.s_addr = inet_addr(argv[1]);
 
-  fprintf(stderr, "===EXECUTE JOINING THREADS===\n");
+  struct SendSoundParams send_sound_params;
 
-  for(int i = 0; i < 2; i++) {
-    int ret = pthread_join(threads[i], NULL);
+  send_sound_params.socket = sock;
+  send_sound_params.address = &server_address;
+  send_sound_params.sound_manager = sound_manager;
 
-    if(ret != 0) {
-      err(EXIT_FAILURE, "Can not create thread %d: %s", i, strerror(ret));
-    }
-  }
+  struct ReceiveSoundParams receive_sound_params;
 
-  return 0;
+  receive_sound_params.socket = sock;
+  receive_sound_params.sound_manager = sound_manager;
+
+  pthread_t send_thread, receive_thread;
+
+  pthread_create(&send_thread, NULL, (void*)send_sounds, &send_sound_params);
+  pthread_create(&receive_thread, NULL, (void*)receive_sounds, &receive_sound_params);
+
+  int tcp_socket = 0;
+
+  connect_to_server(&tcp_socket, argv[1], message_handler);
+
+  pthread_join(send_thread, NULL);
+  pthread_join(receive_thread, NULL);
+
+	closeSoundManager(&sound_manager);
+
+	return 0;
 }
