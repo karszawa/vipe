@@ -4,7 +4,7 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include "stack.c"
+#include "stack.cpp"
 
 #define RECEIVE_DATA_SIZE 2200
 #define MAX_NODE_SIZE 8

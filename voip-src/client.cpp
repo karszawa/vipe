@@ -10,9 +10,9 @@
 #include <err.h>
 #include <errno.h>
 #include <pthread.h>
-#include "sound_manager.c"
-#include "my_time.c"
-#include "tcp_network.c"
+#include "sound_manager.cpp"
+#include "my_time.cpp"
+#include "tcp_network.cpp"
 
 #define SEND_DATA_SIZE 2200
 #define RECEIVE_DATA_SIZE 40000

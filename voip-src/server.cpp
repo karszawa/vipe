@@ -12,10 +12,10 @@
 #include <pthread.h>
 #include <time.h>
 #include <math.h>
-#include "my_time.c"
-#include "voice_communication_network.c"
-#include "common.c"
-#include "tcp_network.c"
+#include "my_time.cpp"
+#include "voice_communication_network.cpp"
+#include "common.cpp"
+#include "tcp_network.cpp"
 
 void message_handler(const char* address, const char* message, int message_size) {
   if(start_with(message, "CHANGE NAME: ")) {
