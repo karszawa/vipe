@@ -16,6 +16,10 @@ struct VoiceCommuniactionNetwork {
   struct sockaddr_in *clients;
 };
 
+void initVCN(struct VoiceCommuniactionNetwork *vcn);
+int receiveFromClient(struct VoiceCommuniactionNetwork *vcn);
+void dispatchToClient(struct VoiceCommuniactionNetwork *vcn);
+
 int get_socket() {
   const int multicast_ttl = 5;
   int soc = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);

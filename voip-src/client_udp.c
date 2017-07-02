@@ -12,9 +12,16 @@
 #include <pthread.h>
 #include "sound_manager.c"
 #include "my_time.c"
+#include "tcp_network.c"
 
 #define SEND_DATA_SIZE 2200
 #define RECEIVE_DATA_SIZE 40000
+
+void message_handler(const char* address, const char* message, int message_size) {
+  // CHANGE NAME new name
+  // CHAT content
+  printf("%s", message);
+}
 
 struct SendSoundParams {
   int socket;
@@ -76,8 +83,6 @@ void receive_sounds(void *p) {
       break;
     }
 
-    printf("%d\n", receive_message_size);
-
     // write(1, buffer, receive_message_size);
     playSound(sound_manager, buffer, receive_message_size);
   }
@@ -85,7 +90,7 @@ void receive_sounds(void *p) {
   shutdown(socket, SHUT_WR);
 }
 
-// argv[1]:IPaddr, argv[2]:port num
+// argv[1]:IPaddr
 int main(int argc, char** argv) {
 	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -101,7 +106,7 @@ int main(int argc, char** argv) {
 	struct sockaddr_in server_address;
 
   server_address.sin_family = AF_INET;
-  server_address.sin_port = htons(atoi(argv[2]));
+  server_address.sin_port = htons(54321);
 	server_address.sin_addr.s_addr = inet_addr(argv[1]);
 
   struct SendSoundParams send_sound_params;
@@ -119,6 +124,10 @@ int main(int argc, char** argv) {
 
   pthread_create(&send_thread, NULL, (void*)send_sounds, &send_sound_params);
   pthread_create(&receive_thread, NULL, (void*)receive_sounds, &receive_sound_params);
+
+  int tcp_socket = 0;
+
+  connect_to_server(&tcp_socket, argv[1], message_handler);
 
   pthread_join(send_thread, NULL);
   pthread_join(receive_thread, NULL);
