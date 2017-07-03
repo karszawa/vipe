@@ -25,7 +25,7 @@ void message_handler(const char* address, const char* message, int message_size)
   }
 }
 
-void send_connection_list(const struct Network network, const VoiceCommuniactionNetwork vcn) {
+void send_connection_list(const Network network, const VoiceCommuniactionNetwork vcn) {
   char message[MAX_MESSAGE_SIZE];
 
   memset(message, 0, sizeof(message));
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
   const auto DISPATCH_DURATION = std::chrono::milliseconds(50);
   VoiceCommuniactionNetwork vcn;
 
-  struct Network network;
+  Network network;
 
   auto wait_connection_thread = std::thread([&]{ wait_connection(&network, message_handler); });
 

@@ -8,6 +8,7 @@
 #include "stack.cpp"
 
 #define RECEIVE_DATA_SIZE 2200
+#define STACK_BUFFER_SIZE RECEIVE_DATA_SIZE * 32
 #define MAX_NODE_SIZE 8
 
 class VoiceCommuniactionNetwork {
@@ -73,37 +74,40 @@ public:
   }
 
   void dispatchToClient() {
-    static char buffer[RECEIVE_DATA_SIZE * 8];
+    static char buffer[RECEIVE_DATA_SIZE * 32];
+
+    int min_stack_size = 1 << 30;
+
+    for(int i = 0; i < this->client_size; i++) {
+      min_stack_size = std::min(min_stack_size, this->stacks[i].stack_size);
+    }
 
     for(int i = 0; i < this->client_size; i++) {
       /// 1. SYNTHESIS RECEIVED SOUNDS
 
       memset(buffer, 0, sizeof(buffer));
-      int buffer_size = 0;
 
       for(int j = 0; j < this->client_size; j++) {
         if(i == j) {
           continue;
         }
 
-        buffer_size += this->stacks[j].stack_size;
-
-        for(int k = 0; k < this->stacks[j].stack_size; k++) {
-          buffer[k] += this->stacks[j].pile[k];
+        for(int k = 0; k < min_stack_size; k++) {
+          buffer[k] += ((int)this->stacks[j].pile[k]) / 2;
         }
       }
 
       /// 2. SEND SYHTHESISED SOUNDS
 
-      if(buffer_size > 0) {
-        sendto(this->soc, buffer, buffer_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+      if(min_stack_size > 0) {
+        sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
       }
     }
 
     /// 3. RESET STACKS
 
     for(int i = 0; i < this->client_size; i++) {
-      this->stacks[i].reset();
+      this->stacks[i].shift(min_stack_size);
     }
   }
 
@@ -115,11 +119,12 @@ private:
     struct sockaddr_in addr;
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(54321);
+    addr.sin_port = htons(54322);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if(bind(soc, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
       perror("bind");
+      exit(1);
     }
 
     if(setsockopt(soc, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&multicast_ttl, sizeof(multicast_ttl)) < 0) {

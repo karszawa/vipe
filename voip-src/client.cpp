@@ -55,14 +55,14 @@ void receive_sounds(int socket, SoundManager sound_manager) {
   socklen_t sender_address_size;
 
   while(1) {
-    int receive_message_size = recvfrom(socket, buffer, RECEIVE_DATA_SIZE, 0, (struct sockaddr *)&sender_address, &sender_address_size);
+    int received_data_size = recvfrom(socket, buffer, RECEIVE_DATA_SIZE, 0, (struct sockaddr *)&sender_address, &sender_address_size);
 
-    if(receive_message_size == -1) {
+    if(received_data_size == -1) {
       perror("write error");
       break;
     }
 
-    sound_manager.play(buffer, receive_message_size);
+    sound_manager.play(buffer, received_data_size);
   }
 
   shutdown(socket, SHUT_WR);
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 	struct sockaddr_in server_address;
 
   server_address.sin_family = AF_INET;
-  server_address.sin_port = htons(54321);
+  server_address.sin_port = htons(54322);
 	server_address.sin_addr.s_addr = inet_addr(argv[1]);
 
   auto send_thread = std::thread([=, &sound_manager]{ send_sounds(sock, server_address, sound_manager); });
