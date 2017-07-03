@@ -22,9 +22,9 @@ class ProcessHandler {
 
     this.process.stderr.on('data', (rawData) => {
       const data = new Buffer(rawData).toString('utf-8');
+      console.log(`RECEIVED(stderr): ${data}`);
 
       data.split('\n').forEach((line) => {
-        console.log(`RECEIVED(stderr): ${line}`);
         this.execHandler('stderr', line);
       });
     });
@@ -32,9 +32,14 @@ class ProcessHandler {
 
   execHandler(std, data) {
     const match_result = data.match(/(.+):\s*(.*)/i);
+
+    if(match_result == null || match_result.length < 1) {
+      console.log(`UNMATCHED DATA: ${data}`);
+      return;
+    }
+
     const identifier = match_result[1];
     const content = (match_result.length >= 3 ? match_result[2] : '');
-
     const target_handlers = (std == 'stdout' ? this.stdoutHandlers : this.stderrHandlers);
 
     if(target_handlers[identifier]) {
@@ -50,6 +55,14 @@ class ProcessHandler {
 
   onStderr(key, handler) {
     this.stderrHandlers[key] = handler;
+  }
+
+  exit() {
+    if(this.process) {
+      return this.process.kill('SIGINT');
+    }
+
+    return false;
   }
 }
 

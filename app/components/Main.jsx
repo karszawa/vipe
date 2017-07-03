@@ -28,7 +28,8 @@ export default class Main extends React.Component {
       host_ip: '',
       host_port: '',
       error: '',
-      is_server: false
+      is_server: false,
+      attendees: [ ]
     };
   }
 
@@ -65,14 +66,22 @@ export default class Main extends React.Component {
       this.server_process = new ServerProcessHandler(port);
 
       this.server_process.onStderr('ESTABLISHED', (val) => {
+        setTimeout(() => {
+          this.client_process = new ClientProcessHandler(ip.address(), port);
 
-        this.client_process = new ClientProcessHandler(ip.address(), port);
+          this.client_process.onStderr('CONNECTED', (val) => {
+            this.setState({
+              scene: SCENES.CONNECTED,
+              attendees: [ ip.address() + ' (you)' ]
+            });
+          });
 
-        this.client_process.onStderr('CONNECTED', (val) => {
-          this.setState({ scene: SCENES.CONNECTED });
-        });
+          this.client_process.onStderr('CONNECTIONS', (val) => {
+            this.setState({ attendees: val.split(',').map((v) => v === ip.address() ? v + ' (you)' : v) });
+          });
 
-        this.client_process.run();
+          this.client_process.run();
+        }, 500);
       });
 
       this.server_process.run();
@@ -80,6 +89,8 @@ export default class Main extends React.Component {
   }
 
   disconnect() {
+    this.setState({ scene: SCENES.SETUP });
+
     if(this.client_process) {
       this.client_process.exit();
     }
@@ -89,11 +100,22 @@ export default class Main extends React.Component {
     }
   }
 
+  onClick() {
+    console.log("onClick");
+  }
+
   render() {
     const content = () => {
       switch(this.state.scene) {
         case SCENES.SETUP: return <Setup onConnect={ this.connect.bind(this) }/>;
-        case SCENES.CONNECTED: return <Connected host_ip={ this.state.host_ip } host_port={ this.state.host_port } disconnect={ this.disconnect.bind(this) } />;
+        case SCENES.CONNECTED: return (
+          <Connected
+            host_ip={ this.state.host_ip }
+            host_port={ this.state.host_port }
+            disconnect={ this.disconnect.bind(this) }
+            attendees={ this.state.attendees }
+          />
+        );
         case SCENES.CONNECTING: return <Connecting />;
         default: return null;
       }
@@ -104,6 +126,7 @@ export default class Main extends React.Component {
         { content() }
 
         <Footer styles="height: 20vh;"/>
+        <button onClick={ this.onClick.bind(this) }>val</button>
       </Container>
     );
   }

@@ -17,7 +17,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('ready', () => {
-  mainWindow = new BrowserWindow({width: 800, height: 600});
+  mainWindow = new BrowserWindow({ width: /* 380 */ 1200, height: 700 });
   mainWindow.loadURL(`${rootPath}/index.html`);
   mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () => {
@@ -28,3 +28,5 @@ app.on('ready', () => {
 app.on("window-all-closed", () => {
   app.quit();
 });
+
+app.setName('VIPE');

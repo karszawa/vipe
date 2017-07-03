@@ -19,7 +19,7 @@
 void message_handler(const char* address, const char* message, int message_size) {
   // CHANGE NAME new name
   // CHAT content
-  printf("%s", message);
+  fprintf(stderr, "%s", message);
 }
 
 void send_sounds(int socket, struct sockaddr_in target_address, SoundManager sound_manager) {
@@ -72,6 +72,8 @@ void receive_sounds(int socket, SoundManager sound_manager) {
 // argv[2]: tcp port (like 54321)
 // argv[3]: udp port (like 51442)
 int main(int argc, char** argv) {
+  // fprintf(stderr, "CONNECTED: \n");
+  // return 0;
   SoundManager sound_manager;
 
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);

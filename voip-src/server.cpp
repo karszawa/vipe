@@ -46,7 +46,8 @@ void send_connection_list(const Network network, const VoiceCommuniactionNetwork
 
 // argv[1]: tcp port
 int main(int argc, char **argv) {
-  fprintf(stdout, "YAHOOO");
+  // fprintf(stderr, "ESTA: \n");
+  // return 0;
   const auto DISPATCH_DURATION = std::chrono::milliseconds(50);
   VoiceCommuniactionNetwork vcn(atoi(argv[2]));
 

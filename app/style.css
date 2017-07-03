@@ -6,3 +6,19 @@
 .host-information {
   width: 70%;
 }
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.min-width-260 {
+  min-width: 260px;
+}
+
+.attendee-card {
+  width: 100%;
+  padding: 10px 24px;
+  color: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+}

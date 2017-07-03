@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Icon, Button, Input, Collection, CollectionItem } from 'react-materialize';
+import { Icon, Button, Input, Collection, CollectionItem, CardPanel } from 'react-materialize';
 
 const Container = styled.div`
   width: 100%;
@@ -10,8 +10,15 @@ const Container = styled.div`
   justify-content: space-between;
   align-items: center;
   background-color: #26a69a;
-  padding: 70px 0;
+  padding: 30px 0;
   color: white;
+`;
+
+const ComponentHeader = styled.div`
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
 `;
 
 const HostInformation = styled.div`
@@ -36,11 +43,10 @@ const HostAddress = styled.label`
 `;
 
 const AttendeeListWrapper = styled.ul`
-  flex: 1;
-`;
-
-const AttendeeListItem = styled.li`
-
+  margin-top: 20px;
+  display: flex;
+  width: 80%;
+  flex-direction: column;
 `;
 
 export default class Connecting extends React.Component {
@@ -48,17 +54,36 @@ export default class Connecting extends React.Component {
     super(props);
   }
 
+  onDisconnect() {
+    this.props.disconnect();
+  }
+
   render() {
+    const attendees = this.props.attendees.map((val, idx) => {
+      return (
+        <CardPanel key={idx} className='white attendee-card'>
+          <Icon small left>person</Icon>
+          <span>{ val }</span>
+        </CardPanel>
+      );
+    });
+
     return (
       <Container>
-        <Icon className="call-icon">call</Icon>
+        <ComponentHeader>
+          <Icon className="call-icon">call</Icon>
 
-        <HostInformation>
-          <HostLabel>HOST INFORMATION</HostLabel>
-          <HostAddress>{ `${this.props.host_ip} : ${this.props.host_port}` }</HostAddress>
-        </HostInformation>
+          <HostInformation>
+            <HostLabel>HOST INFORMATION</HostLabel>
+            <HostAddress>{ `${this.props.host_ip} : ${this.props.host_port}` }</HostAddress>
+          </HostInformation>
+        </ComponentHeader>
 
-        <Button>Disconnect <Icon large right>call_end</Icon></Button>
+        <AttendeeListWrapper>
+          { attendees }
+        </AttendeeListWrapper>
+
+        <Button onClick={ this.onDisconnect.bind(this) }>Disconnect <Icon small right>call_end</Icon></Button>
       </Container>
     );
   }
