@@ -44,16 +44,15 @@ void send_connection_list(const Network network, const VoiceCommuniactionNetwork
   broadcast_message(&network, message, strlen(message));
 }
 
-// argv[1]: tcp port
+// argv[1]: udp port
+// argv[2]: tcp port
 int main(int argc, char **argv) {
-  // fprintf(stderr, "ESTA: \n");
-  // return 0;
   const auto DISPATCH_DURATION = std::chrono::milliseconds(50);
-  VoiceCommuniactionNetwork vcn(atoi(argv[2]));
+  VoiceCommuniactionNetwork vcn(atoi(argv[1]));
 
   Network network;
 
-  auto wait_connection_thread = std::thread([&]{ wait_connection(&network, atoi(argv[1]), message_handler); });
+  auto wait_connection_thread = std::thread([&]{ wait_connection(&network, atoi(argv[2]), message_handler); });
 
   auto last_time = std::chrono::system_clock::now();
 
@@ -65,6 +64,8 @@ int main(int argc, char **argv) {
     if(is_new_client) {
       send_connection_list(network, vcn);
     }
+
+    // printf("milliseconds: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()  - last_time).count());
 
     if(std::chrono::system_clock::now() - last_time > DISPATCH_DURATION) {
       if(vcn.dispatchToClient() != 0) {

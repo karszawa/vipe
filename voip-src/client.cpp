@@ -37,6 +37,7 @@ void send_sounds(int socket, struct sockaddr_in target_address, SoundManager sou
 			break;
 		}
 
+    // printf("SEND(%d): %lu\n", socket, read_length);
     if(sendto(socket, buffer, read_length, 0, (struct sockaddr *)&target_address, sizeof(target_address)) < 0) {
       fprintf(stderr, "SENDTO ERROR\n");
       break;
@@ -57,6 +58,8 @@ void receive_sounds(int socket, SoundManager sound_manager) {
   while(1) {
     int received_data_size = recvfrom(socket, buffer, RECEIVE_DATA_SIZE, 0, (struct sockaddr *)&sender_address, &sender_address_size);
 
+    // printf("RECEIVE: %d\n", received_data_size);
+
     if(received_data_size == -1) {
       perror("write error");
       break;
@@ -69,11 +72,9 @@ void receive_sounds(int socket, SoundManager sound_manager) {
 }
 
 // argv[1]: ip address (like 192.168.100.4)
-// argv[2]: tcp port (like 54321)
-// argv[3]: udp port (like 51442)
+// argv[2]: udp port (like 54321)
+// argv[3]: tcp port (like 51442)
 int main(int argc, char** argv) {
-  // fprintf(stderr, "CONNECTED: \n");
-  // return 0;
   SoundManager sound_manager;
 
   int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -91,7 +92,7 @@ int main(int argc, char** argv) {
   auto send_thread = std::thread([=, &sound_manager]{ send_sounds(sock, server_address, sound_manager); });
   auto recv_thread = std::thread([=, &sound_manager]{ receive_sounds(sock, sound_manager); });
 
-  auto message_thread = connect_to_server(argv[1], atoi(argv[2]), message_handler);
+  auto message_thread = connect_to_server(argv[1], atoi(argv[3]), message_handler);
 
   send_thread.join();
   recv_thread.join();

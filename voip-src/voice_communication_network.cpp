@@ -42,6 +42,8 @@ public:
       exit(0);
     }
 
+    // printf("RECEIVED_DATA_SIZE: %d\n", received_data_size);
+
     /// 2. REGIST CLIENT
 
     int is_new_client = 1;
@@ -100,7 +102,8 @@ public:
       /// 2. SEND SYHTHESISED SOUNDS
 
       if(min_stack_size > 0) {
-        sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+        int ss = sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+        // printf("SENDTOSIZE: %d\n", ss);
       }
     }
 
