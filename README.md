@@ -11,3 +11,13 @@
 - React
 - styled-components
 - react-materialize
+
+## build
+
+```
+$ npm -g install electron
+$ npm -g install electron-packager
+$ yarn
+$ npm build # for mac
+$ npm build-for-linux
+```
