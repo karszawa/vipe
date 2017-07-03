@@ -67,9 +67,9 @@ int main(int argc, char **argv) {
     }
 
     if(std::chrono::system_clock::now() - last_time > DISPATCH_DURATION) {
-      last_time = std::chrono::system_clock::now();
-
-      vcn.dispatchToClient();
+      if(vcn.dispatchToClient() != 0) {
+        last_time = std::chrono::system_clock::now();
+      }
     }
   }
 

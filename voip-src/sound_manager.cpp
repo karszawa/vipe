@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define REC_MAX 2200
+#define REC_MAX 1000
 
 class SoundManager {
   FILE *source, *destination;
@@ -10,9 +10,9 @@ class SoundManager {
 
 public:
 
-  SoundManager() : sb(8), sc(2), sr(44100), db(8), dc(2), dr(44100) {
-    this->source = popen("rec -r 44100 -e s -c 2 -b 8 -t raw -q -", "r");
-    this->destination = popen("play -r 44100 -e s -c 2 -b 8 -t raw -q -", "w");
+  SoundManager() : sb(8), sc(2), sr(8000), db(8), dc(2), dr(800) {
+    this->source = popen("rec -r 8000 -e s -c 2 -b 8 -t raw -q -", "r");
+    this->destination = popen("play -r 8000 -e s -c 2 -b 8 -t raw -q -", "w");
   }
 
   ~SoundManager() {

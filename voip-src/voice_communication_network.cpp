@@ -73,7 +73,7 @@ public:
     return is_new_client;
   }
 
-  void dispatchToClient() {
+  int dispatchToClient() {
     static char buffer[RECEIVE_DATA_SIZE * 32];
 
     int min_stack_size = 1 << 30;
@@ -108,6 +108,8 @@ public:
     for(int i = 0; i < this->client_size; i++) {
       this->stacks[i].shift(min_stack_size);
     }
+
+    return min_stack_size;
   }
 
 private:
