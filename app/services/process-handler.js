@@ -59,7 +59,7 @@ class ProcessHandler {
 
   exit() {
     if(this.process) {
-      return this.process.kill('SIGINT');
+      spawn('kill', [ this.process.pid ]);
     }
 
     return false;
