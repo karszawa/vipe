@@ -1,0 +1,66 @@
+import { spawn } from 'child_process';
+
+class ProcessHandler {
+  constructor(binary, args) {
+    this.binary = binary;
+    this.args = args;
+    this.stdoutHandlers = { };
+    this.stderrHandlers = { };
+  }
+
+  run() {
+    this.process = spawn(`./bin/${this.binary}`, this.args);
+
+    this.process.stdout.on('data', (rawData) => {
+      const data = new Buffer(rawData).toString('utf-8');
+
+      data.split('\n').each((line) => {
+        console.log(`RECEIVED(stdout): ${line}`);
+        this.execHandler('stdout', line);
+      });
+    });
+
+    this.process.stderr.on('data', (rawData) => {
+      const data = new Buffer(rawData).toString('utf-8');
+
+      data.split('\n').forEach((line) => {
+        console.log(`RECEIVED(stderr): ${line}`);
+        this.execHandler('stderr', line);
+      });
+    });
+  }
+
+  execHandler(std, data) {
+    const match_result = data.match(/(.+):\s*(.*)/i);
+    const identifier = match_result[1];
+    const content = (match_result.length >= 3 ? match_result[2] : '');
+
+    const target_handlers = (std == 'stdout' ? this.stdoutHandlers : this.stderrHandlers);
+
+    if(target_handlers[identifier]) {
+      target_handlers[identifier](content);
+    } else {
+      console.log(`UNKNOWN IDENTIFIER: ${data}`);
+    }
+  }
+
+  onStdout(key, handler) {
+    this.stdoutHandlers[key] = handler;
+  }
+
+  onStderr(key, handler) {
+    this.stderrHandlers[key] = handler;
+  }
+}
+
+export class ServerProcessHandler extends ProcessHandler {
+  constructor(tcp_port) {
+    super('server', [ tcp_port, 51411 ]);
+  }
+}
+
+export class ClientProcessHandler extends ProcessHandler {
+  constructor(host_ip, udp_port) {
+    super('client', [ host_ip, udp_port, 51411 ]);
+  }
+}

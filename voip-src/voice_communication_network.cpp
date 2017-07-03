@@ -19,8 +19,8 @@ public:
   std::vector<Stack> stacks;
   std::vector<struct sockaddr_in> clients;
 
-  VoiceCommuniactionNetwork() : client_size(0) {
-    this->soc = get_socket();
+  VoiceCommuniactionNetwork(int port) : client_size(0) {
+    this->soc = get_socket(port);
     this->stacks = std::vector<Stack>(MAX_NODE_SIZE);
     this->clients = std::vector<struct sockaddr_in>(MAX_NODE_SIZE);
   }
@@ -112,22 +112,22 @@ public:
 
 private:
 
-  int get_socket() {
-    const int multicast_ttl = 5;
+  int get_socket(int port) {
+    const int multicast_ttl = 5, yes1 = 1, yes2 = 1;
     int soc = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in addr;
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(54322);
+    addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes1, sizeof(yes1));
+    setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (const char *)&yes2, sizeof(yes2));
+    setsockopt(soc, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&multicast_ttl, sizeof(multicast_ttl));
 
     if(bind(soc, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
       perror("bind");
       exit(1);
-    }
-
-    if(setsockopt(soc, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&multicast_ttl, sizeof(multicast_ttl)) < 0) {
-      perror("setsockopt() failed");
     }
 
     return soc;

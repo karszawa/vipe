@@ -44,13 +44,15 @@ void send_connection_list(const Network network, const VoiceCommuniactionNetwork
   broadcast_message(&network, message, strlen(message));
 }
 
+// argv[1]: tcp port
 int main(int argc, char **argv) {
+  fprintf(stdout, "YAHOOO");
   const auto DISPATCH_DURATION = std::chrono::milliseconds(50);
-  VoiceCommuniactionNetwork vcn;
+  VoiceCommuniactionNetwork vcn(atoi(argv[2]));
 
   Network network;
 
-  auto wait_connection_thread = std::thread([&]{ wait_connection(&network, message_handler); });
+  auto wait_connection_thread = std::thread([&]{ wait_connection(&network, atoi(argv[1]), message_handler); });
 
   auto last_time = std::chrono::system_clock::now();
 

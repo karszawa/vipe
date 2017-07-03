@@ -1,10 +1,12 @@
 import React from 'react';
+import * as ip from 'ip';
 import Setup from './Setup.jsx';
 import Connecting from './Connecting.jsx';
 import Connected from './Connected.jsx';
 import styled from 'styled-components';
-import { spawn } from 'child_process';
 import Footer from './Footer.jsx';
+import { ServerProcessHandler, ClientProcessHandler } from '../services/process-handler.js'
+import { getRandomInt } from '../lib/common.js';
 
 const SCENES = {
   SETUP: 'SETUP',
@@ -25,42 +27,73 @@ export default class Main extends React.Component {
       scene: SCENES.SETUP,
       host_ip: '',
       host_port: '',
-      error: ''
+      error: '',
+      is_server: false
     };
   }
 
-  onConnect(host_ip, host_port) {
-    console.log('TRY CONNECTING');
+  componentWillUnmount() {
+    console.log('Kill child processes');
 
-    this.setState({
-      scene: SCENES.CONNECTING,
-      host_ip: host_ip,
-      host_port: host_port
-    });
+    if(this.client_process) {
+      this.client_process.exit();
+    }
 
-    this.process = spawn('./a.out', [ host_ip, host_port ]);
+    if(this.server_process) {
+      this.server_process.exit();
+    }
+  }
 
-    this.process.stdout.on('data', (rawData) => {
-      const data = new Buffer(rawData).toString('utf-8');
-      console.log(data);
-      this.setState({ scene: SCENES.CONNECTED });
-    });
+  connect(host_ip, host_port) {
+    this.setState({ scene: SCENES.CONNECTING });
 
-    this.process.stderr.on('data', (rawData) => {
-      const data = new Buffer(rawData).toString('utf-8');
-      console.log(data);
+    if(host_ip != '') {
+      this.setState({ host_ip: host_ip, host_port: host_port });
 
-      if(this.state.error === '') {
-        this.setState({ error: data });
-      }
-    });
+      this.client_process = new ClientProcessHandler(host_ip, host_port);
+
+      this.client_process.onStderr('CONNECTED', (val) => {
+        this.setState({ scene: SCENES.CONNECTED });
+      });
+
+      this.client_process.run();
+    } else {
+      const port = 54321; // getRandomInt(50000, 59999);
+
+      this.setState({ is_server: true, host_ip: ip.address(), host_port: port });
+
+      this.server_process = new ServerProcessHandler(port);
+
+      this.server_process.onStderr('ESTABLISHED', (val) => {
+
+        this.client_process = new ClientProcessHandler(ip.address(), port);
+
+        this.client_process.onStderr('CONNECTED', (val) => {
+          this.setState({ scene: SCENES.CONNECTED });
+        });
+
+        this.client_process.run();
+      });
+
+      this.server_process.run();
+    }
+  }
+
+  disconnect() {
+    if(this.client_process) {
+      this.client_process.exit();
+    }
+
+    if(this.server_process) {
+      this.server_process.exit();
+    }
   }
 
   render() {
     const content = () => {
       switch(this.state.scene) {
-        case SCENES.SETUP: return <Setup onConnect={ this.onConnect.bind(this) }/>;
-        case SCENES.CONNECTED: return <Connected host_ip={ this.state.host_ip } host_port={ this.state.host_port } />;
+        case SCENES.SETUP: return <Setup onConnect={ this.connect.bind(this) }/>;
+        case SCENES.CONNECTED: return <Connected host_ip={ this.state.host_ip } host_port={ this.state.host_port } disconnect={ this.disconnect.bind(this) } />;
         case SCENES.CONNECTING: return <Connecting />;
         default: return null;
       }

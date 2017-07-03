@@ -32,19 +32,28 @@ export default class Setup extends React.Component {
     };
   }
 
-  onClickConnectButton() {
+  onClickClientConnectButton() {
     this.props.onConnect(this.state.host_ip, this.state.host_port);
+  }
+
+  onClickServerConnectButton() {
+    this.props.onConnect('', '');
   }
 
   render() {
     return (
       <Container>
-        <Title className=''>SIMPLE PHONE</Title>
+        <Title className=''>VIPE</Title>
         <Row>
-          <Input s={6} label="Host IP" value={this.state.host_ip} onChange={ (event) => { this.setState({host_ip: event.target.value}); } } />
-          <Input s={6} label="Host Port" value={this.state.host_port} onChange={ (event) => { this.setState({host_port: event.target.value}); } } />
+          <Input s={6} label="Host IP" value={this.state.host_ip} onChange={ (event) => { this.setState({ host_ip: event.target.value}); } } />
+          <Input s={6} label="Host Port" value={this.state.host_port} onChange={ (event) => { this.setState({ host_port: event.target.value}); } } />
         </Row>
-        <Button waves='light' onClick={ this.onClickConnectButton.bind(this) }>CONNECT</Button>
+        <Container>
+          <Button waves='light' onClick={ this.onClickClientConnectButton.bind(this) }>CONNECT TO SERVER</Button>
+        </Container>
+        <Container>
+          <Button waves='light' onClick={ this.onClickServerConnectButton.bind(this) }>ESTABLISH SERVER</Button>
+        </Container>
       </Container>
     );
   }

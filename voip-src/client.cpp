@@ -69,6 +69,8 @@ void receive_sounds(int socket, SoundManager sound_manager) {
 }
 
 // argv[1]: ip address (like 192.168.100.4)
+// argv[2]: tcp port (like 54321)
+// argv[3]: udp port (like 51442)
 int main(int argc, char** argv) {
   SoundManager sound_manager;
 
@@ -81,13 +83,13 @@ int main(int argc, char** argv) {
 	struct sockaddr_in server_address;
 
   server_address.sin_family = AF_INET;
-  server_address.sin_port = htons(54322);
+  server_address.sin_port = htons(atoi(argv[2]));
 	server_address.sin_addr.s_addr = inet_addr(argv[1]);
 
   auto send_thread = std::thread([=, &sound_manager]{ send_sounds(sock, server_address, sound_manager); });
   auto recv_thread = std::thread([=, &sound_manager]{ receive_sounds(sock, sound_manager); });
 
-  auto message_thread = connect_to_server(argv[1], message_handler);
+  auto message_thread = connect_to_server(argv[1], atoi(argv[2]), message_handler);
 
   send_thread.join();
   recv_thread.join();

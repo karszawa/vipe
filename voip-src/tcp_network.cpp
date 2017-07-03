@@ -38,7 +38,7 @@ void _wait_message_server(Network *network, int target_index, WAIT_MESSAGE_FUNC 
     int message_size = read(network->sockets[target_index], buffer, MAX_MESSAGE_SIZE);
 
     if(message_size < 0) {
-      fprintf(stderr, "FAILED TO READ");
+      fprintf(stderr, "ERROR: FAILED TO READ");
       break;
     }
 
@@ -46,22 +46,28 @@ void _wait_message_server(Network *network, int target_index, WAIT_MESSAGE_FUNC 
   }
 }
 
-void wait_connection(Network *network, WAIT_MESSAGE_FUNC handler) {
+void wait_connection(Network *network, int port, WAIT_MESSAGE_FUNC handler) {
   std::vector<std::thread> threads;
 
   struct sockaddr_in address;
 
   address.sin_family = AF_INET;
-  address.sin_port = htons(51515);
+  address.sin_port = htons(port);
   address.sin_addr.s_addr = INADDR_ANY;
 
   int soc = socket(PF_INET, SOCK_STREAM, 0);
+
+  int yes = 1;
+  setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes, sizeof(yes));
+  setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (const char *)&yes, sizeof(yes));
 
   if(bind(soc, (struct sockaddr *)&address, sizeof(address)) < 0) {
     perror("bind");
   }
 
   listen(soc, MAX_CONNECTION_SIZE);
+
+  fprintf(stderr, "ESTABLISHED: ");
 
   for(int i = 0; i < MAX_CONNECTION_SIZE; i++) {
     struct sockaddr_in client;
@@ -70,7 +76,7 @@ void wait_connection(Network *network, WAIT_MESSAGE_FUNC handler) {
     network->sockets[i] = accept(soc, (struct sockaddr *) &client, &len);
 
     if(network->sockets[i] < -1) {
-      fprintf(stderr, "CONNECTION ERROR");
+      fprintf(stderr, "ERROR: CONNECTION ERROR");
       i--;
       continue;
     }
@@ -111,18 +117,19 @@ void _wait_message_client(int socket, const char server_address[32], WAIT_MESSAG
   }
 }
 
-std::thread connect_to_server(const char *server_address, WAIT_MESSAGE_FUNC handler) {
+std::thread connect_to_server(const char *server_address, int port, WAIT_MESSAGE_FUNC handler) {
   int soc = socket(PF_INET, SOCK_STREAM, 0);
   struct sockaddr_in address;
 
   address.sin_family = AF_INET;
   inet_aton(server_address, &address.sin_addr);
-  address.sin_port = htons(51515);
+  address.sin_port = htons(port);
 
   if(connect(soc, (struct sockaddr *)&address, sizeof(address)) == 0) {
     fprintf(stderr, "NEW TCP CONNECTION: %s(%d)\n", server_address, soc);
+    fprintf(stderr, "CONNECTED: ");
   } else {
-    fprintf(stderr, "FAIL TO CONNECT: %s\n", server_address);
+    fprintf(stderr, "ERROR: FAIL TO CONNECT: %s\n", server_address);
     exit(1);
   }
 

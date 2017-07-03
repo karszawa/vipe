@@ -11,3 +11,4 @@ node_modules
 .idea
 a.out
 bin
+voip-src/*.dSYM
