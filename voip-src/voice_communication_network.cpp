@@ -105,7 +105,6 @@ public:
     }
 
     /// 3. RESET STACKS
-
     for(int i = 0; i < this->client_size; i++) {
       this->stacks[i].shift(min_stack_size);
     }
