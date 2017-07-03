@@ -12,3 +12,4 @@ node_modules
 a.out
 bin
 voip-src/*.dSYM
+VIPE-darwin-x64
