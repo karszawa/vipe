@@ -75,7 +75,7 @@ export default class Connecting extends React.Component {
 
           <HostInformation>
             <HostLabel>HOST INFORMATION</HostLabel>
-            <HostAddress>{ `${this.props.host_ip} : ${this.props.host_port}` }</HostAddress>
+            <HostAddress>{ `${this.props.host_ip} : ${this.props.udp_port}-${this.props.tcp_port}` }</HostAddress>
           </HostInformation>
         </ComponentHeader>
 

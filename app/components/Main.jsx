@@ -26,7 +26,8 @@ export default class Main extends React.Component {
     this.state = {
       scene: SCENES.SETUP,
       host_ip: '',
-      host_port: '',
+      udp_port: '',
+      tcp_port: '',
       error: '',
       is_server: false,
       attendees: [ ]
@@ -45,32 +46,43 @@ export default class Main extends React.Component {
     }
   }
 
-  connect(host_ip, host_port) {
-    const udp_port = 54444;
-    const tcp_port = 51421;
-
+  connect(host_ip, udp_port, tcp_port) {
     this.setState({ scene: SCENES.CONNECTING });
 
     if(host_ip != '') {
-      this.setState({ host_ip: host_ip, host_port: host_port });
+      this.setState({
+        host_ip: host_ip,
+        udp_port: udp_port,
+        tcp_port: tcp_port
+      });
 
-      this.client_process = new ClientProcessHandler(host_ip, host_port, udp_port);
+      this.client_process = new ClientProcessHandler(host_ip, udp_port, tcp_port);
 
       this.client_process.onStderr('CONNECTED', (val) => {
         this.setState({ scene: SCENES.CONNECTED });
       });
 
+      this.client_process.onStderr('CONNECTIONS', (val) => {
+        this.setState({ attendees: val.split(',').map((v) => v === ip.address() ? v + ' (you)' : v) });
+      });
+
       this.client_process.run();
     } else {
-      const port = tcp_port; // getRandomInt(50000, 59999);
+      const udp_port = getRandomInt(50000, 59999);
+      const tcp_port = getRandomInt(50000, 59999);
 
-      this.setState({ is_server: true, host_ip: ip.address(), host_port: port });
+      this.setState({
+        is_server: true,
+        host_ip: ip.address(),
+        udp_port: udp_port,
+        tcp_port: tcp_port
+      });
 
-      this.server_process = new ServerProcessHandler(port, udp_port);
+      this.server_process = new ServerProcessHandler(udp_port, tcp_port);
 
       this.server_process.onStderr('ESTABLISHED', (val) => {
         setTimeout(() => {
-          this.client_process = new ClientProcessHandler(ip.address(), port, udp_port);
+          this.client_process = new ClientProcessHandler(ip.address(), udp_port, tcp_port);
 
           this.client_process.onStderr('CONNECTED', (val) => {
             this.setState({
@@ -114,7 +126,8 @@ export default class Main extends React.Component {
         case SCENES.CONNECTED: return (
           <Connected
             host_ip={ this.state.host_ip }
-            host_port={ this.state.host_port }
+            udp_port={ this.state.udp_port }
+            tcp_port={ this.state.tcp_port }
             disconnect={ this.disconnect.bind(this) }
             attendees={ this.state.attendees }
           />

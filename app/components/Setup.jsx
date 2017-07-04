@@ -40,11 +40,15 @@ export default class Setup extends React.Component {
   }
 
   onClickClientConnectButton() {
-    this.props.onConnect(this.state.host_ip, this.state.host_port);
+    const splitted = this.state.host_port.split('-');
+    const udp_port = splitted[0];
+    const tcp_port = splitted[1];
+
+    this.props.onConnect(this.state.host_ip, udp_port, tcp_port);
   }
 
   onClickServerConnectButton() {
-    this.props.onConnect('', '');
+    this.props.onConnect('', '', '');
   }
 
   render() {
@@ -54,13 +58,13 @@ export default class Setup extends React.Component {
           <img alt="vipe" src="assets/vipe.svg" width="180"/>
         </Title>
 
-        <Card className='white min-width-260' textClassName='white-text' title='Server mode'>
+        <Card className='white min-width-260' textClassName='black-text' title='Server mode'>
           <CenteredContainer>
             <Button className='mt-20' waves='light' onClick={ this.onClickServerConnectButton.bind(this) }>ESTABLISH SERVER</Button>
           </CenteredContainer>
         </Card>
 
-        <Card className='white min-width-260' textClassName='white-text' title='Client mode'>
+        <Card className='white min-width-260' textClassName='black-text' title='Client mode'>
           <CenteredContainer>
             <Input label="Host IP" value={this.state.host_ip} onChange={ (event) => { this.setState({ host_ip: event.target.value}); } } />
             <Input label="Host Port" value={this.state.host_port} onChange={ (event) => { this.setState({ host_port: event.target.value}); } } />

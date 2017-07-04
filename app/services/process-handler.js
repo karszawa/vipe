@@ -67,13 +67,13 @@ class ProcessHandler {
 }
 
 export class ServerProcessHandler extends ProcessHandler {
-  constructor(tcp_port, udp_port) {
+  constructor(udp_port, tcp_port) {
     super('server', [ udp_port, tcp_port ]);
   }
 }
 
 export class ClientProcessHandler extends ProcessHandler {
-  constructor(host_ip, tcp_port, udp_port) {
+  constructor(host_ip, udp_port, tcp_port) {
     super('client', [ host_ip, udp_port, tcp_port ]);
   }
 }
