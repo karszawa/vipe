@@ -46,12 +46,15 @@ export default class Main extends React.Component {
   }
 
   connect(host_ip, host_port) {
+    const udp_port = 54444;
+    const tcp_port = 51421;
+
     this.setState({ scene: SCENES.CONNECTING });
 
     if(host_ip != '') {
       this.setState({ host_ip: host_ip, host_port: host_port });
 
-      this.client_process = new ClientProcessHandler(host_ip, host_port);
+      this.client_process = new ClientProcessHandler(host_ip, host_port, udp_port);
 
       this.client_process.onStderr('CONNECTED', (val) => {
         this.setState({ scene: SCENES.CONNECTED });
@@ -59,15 +62,15 @@ export default class Main extends React.Component {
 
       this.client_process.run();
     } else {
-      const port = 54321; // getRandomInt(50000, 59999);
+      const port = tcp_port; // getRandomInt(50000, 59999);
 
       this.setState({ is_server: true, host_ip: ip.address(), host_port: port });
 
-      this.server_process = new ServerProcessHandler(port);
+      this.server_process = new ServerProcessHandler(port, udp_port);
 
       this.server_process.onStderr('ESTABLISHED', (val) => {
         setTimeout(() => {
-          this.client_process = new ClientProcessHandler(ip.address(), port);
+          this.client_process = new ClientProcessHandler(ip.address(), port, udp_port);
 
           this.client_process.onStderr('CONNECTED', (val) => {
             this.setState({
