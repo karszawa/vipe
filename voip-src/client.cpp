@@ -14,7 +14,7 @@
 #include "tcp_network.cpp"
 
 #define SEND_DATA_SIZE 4000
-#define RECEIVE_DATA_SIZE 1600
+#define RECEIVE_DATA_SIZE 2000
 
 void message_handler(const char* address, const char* message, int message_size) {
   // CHANGE NAME new name
@@ -37,8 +37,6 @@ void send_sounds(int socket, struct sockaddr_in target_address, SoundManager sou
 			break;
 		}
 
-    printf("SEND(%d): %lu\n", socket, read_length);
-
     if(sendto(socket, buffer, read_length, 0, (struct sockaddr *)&target_address, sizeof(target_address)) < 0) {
       fprintf(stderr, "SENDTO ERROR\n");
       break;
@@ -58,8 +56,6 @@ void receive_sounds(int socket, SoundManager sound_manager) {
 
   while(1) {
     int received_data_size = recvfrom(socket, buffer, RECEIVE_DATA_SIZE, 0, (struct sockaddr *)&sender_address, &sender_address_size);
-
-    // printf("RECEIVE: %d\n", received_data_size);
 
     if(received_data_size == -1) {
       perror("write error");

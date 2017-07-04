@@ -7,7 +7,7 @@
 #include <vector>
 #include "stack.cpp"
 
-#define RECEIVE_DATA_SIZE 800
+#define RECEIVE_DATA_SIZE 2000
 #define STACK_BUFFER_SIZE RECEIVE_DATA_SIZE * 32
 #define MAX_NODE_SIZE 8
 
@@ -42,8 +42,6 @@ public:
       exit(0);
     }
 
-    // printf("RECEIVED_DATA_SIZE: %d\n", received_data_size);
-
     /// 2. REGIST CLIENT
 
     int is_new_client = 1;
@@ -65,7 +63,6 @@ public:
     }
 
     /// 3. PUSH DATA TO A STACK
-    printf("RECEIVE FROM %s %d\n", client_address_str, received_data_size);
 
     for(int i = 0; i < this->client_size; i++) {
       if(strcmp(inet_ntoa(this->clients[i].sin_addr), client_address_str) == 0) {
@@ -77,29 +74,21 @@ public:
   }
 
   int dispatchToClient() {
-    if(this->client_size > 1) {
-      for(int i = 0; i < this->client_size; i++) {
-        if(this->stacks[!i].stack_size == 0) {
-          continue;
-        }
-
-        int ss = sendto(this->soc, this->stacks[!i].pile, this->stacks[!i].stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
-        // printf("SENDTOSIZE: %d\n", ss);
-      }
-    }
-
-    // printf("dispatch: ");
-    // for(int i = 0; i < this->client_size; i++) {
-    //   printf("%d%c", this->stacks[i].stack_size, i + 1 == this->client_size ? '\n' : ',');
+    // if(this->client_size > 1) {
+    //   for(int i = 0; i < this->client_size; i++) {
+    //     if(this->stacks[!i].stack_size == 0) {
+    //       continue;
+    //     }
+    //
+    //     sendto(this->soc, this->stacks[!i].pile, this->stacks[!i].stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+    //   }
     // }
-
-    for(int i = 0; i < this->client_size; i++) {
-      this->stacks[i].reset();
-    }
-
-    return 800;
-
-
+    //
+    // for(int i = 0; i < this->client_size; i++) {
+    //   this->stacks[i].reset();
+    // }
+    //
+    // return 800;
 
     static char buffer[RECEIVE_DATA_SIZE * 32];
 
@@ -127,8 +116,7 @@ public:
       /// 2. SEND SYHTHESISED SOUNDS
 
       if(min_stack_size > 0) {
-        int ss = sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
-        printf("SENDTOSIZE: %d\n", ss);
+        sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
       }
     }
 
