@@ -1,7 +1,9 @@
-# i1i2i3pe
+# Vipe
 
 クライアント・サーバーモデルのVoIPサービス。
 サーバーはユーザー自身が設置することができる。
+
+![alt](./assets/display.jpeg)
 
 ## Technologies
 

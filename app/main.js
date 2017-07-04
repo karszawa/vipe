@@ -16,7 +16,7 @@ app.on('window-all-closed', () => {
   }
 });
 
-const isProduction = false
+const isProduction = true
 
 app.on('ready', () => {
   mainWindow = new BrowserWindow({ width: (isProduction ? 380 : 1200), height: 700 });
