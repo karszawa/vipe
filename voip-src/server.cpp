@@ -65,6 +65,8 @@ int main(int argc, char **argv) {
       send_connection_list(network, vcn);
     }
 
+    vcn.dispatchToClient();
+
     // printf("milliseconds: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()  - last_time).count());
 
     if(std::chrono::system_clock::now() - last_time > DISPATCH_DURATION) {

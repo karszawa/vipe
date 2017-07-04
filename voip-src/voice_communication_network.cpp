@@ -7,7 +7,7 @@
 #include <vector>
 #include "stack.cpp"
 
-#define RECEIVE_DATA_SIZE 2200
+#define RECEIVE_DATA_SIZE 800
 #define STACK_BUFFER_SIZE RECEIVE_DATA_SIZE * 32
 #define MAX_NODE_SIZE 8
 
@@ -65,6 +65,7 @@ public:
     }
 
     /// 3. PUSH DATA TO A STACK
+    printf("RECEIVE FROM %s %d\n", client_address_str, received_data_size);
 
     for(int i = 0; i < this->client_size; i++) {
       if(strcmp(inet_ntoa(this->clients[i].sin_addr), client_address_str) == 0) {
@@ -76,6 +77,30 @@ public:
   }
 
   int dispatchToClient() {
+    if(this->client_size > 1) {
+      for(int i = 0; i < this->client_size; i++) {
+        if(this->stacks[!i].stack_size == 0) {
+          continue;
+        }
+
+        int ss = sendto(this->soc, this->stacks[!i].pile, this->stacks[!i].stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+        // printf("SENDTOSIZE: %d\n", ss);
+      }
+    }
+
+    // printf("dispatch: ");
+    // for(int i = 0; i < this->client_size; i++) {
+    //   printf("%d%c", this->stacks[i].stack_size, i + 1 == this->client_size ? '\n' : ',');
+    // }
+
+    for(int i = 0; i < this->client_size; i++) {
+      this->stacks[i].reset();
+    }
+
+    return 800;
+
+
+
     static char buffer[RECEIVE_DATA_SIZE * 32];
 
     int min_stack_size = 1 << 30;
@@ -95,7 +120,7 @@ public:
         }
 
         for(int k = 0; k < min_stack_size; k++) {
-          buffer[k] += ((int)this->stacks[j].pile[k]) / 2;
+          buffer[k] += ((int)this->stacks[j].pile[k]) / (this->client_size - 1);
         }
       }
 
@@ -103,7 +128,7 @@ public:
 
       if(min_stack_size > 0) {
         int ss = sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
-        // printf("SENDTOSIZE: %d\n", ss);
+        printf("SENDTOSIZE: %d\n", ss);
       }
     }
 
@@ -118,17 +143,12 @@ public:
 private:
 
   int get_socket(int port) {
-    const int multicast_ttl = 5, yes1 = 1, yes2 = 1;
     int soc = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     struct sockaddr_in addr;
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    setsockopt(soc, SOL_SOCKET, SO_REUSEADDR, (const char *)&yes1, sizeof(yes1));
-    setsockopt(soc, SOL_SOCKET, SO_REUSEPORT, (const char *)&yes2, sizeof(yes2));
-    setsockopt(soc, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&multicast_ttl, sizeof(multicast_ttl));
 
     if(bind(soc, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
       perror("bind");

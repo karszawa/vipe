@@ -13,8 +13,8 @@
 #include "sound_manager.cpp"
 #include "tcp_network.cpp"
 
-#define SEND_DATA_SIZE 2200
-#define RECEIVE_DATA_SIZE 40000
+#define SEND_DATA_SIZE 4000
+#define RECEIVE_DATA_SIZE 1600
 
 void message_handler(const char* address, const char* message, int message_size) {
   // CHANGE NAME new name
@@ -37,7 +37,8 @@ void send_sounds(int socket, struct sockaddr_in target_address, SoundManager sou
 			break;
 		}
 
-    // printf("SEND(%d): %lu\n", socket, read_length);
+    printf("SEND(%d): %lu\n", socket, read_length);
+
     if(sendto(socket, buffer, read_length, 0, (struct sockaddr *)&target_address, sizeof(target_address)) < 0) {
       fprintf(stderr, "SENDTO ERROR\n");
       break;
