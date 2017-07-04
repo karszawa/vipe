@@ -47,14 +47,11 @@ void send_connection_list(const Network network, const VoiceCommuniactionNetwork
 // argv[1]: udp port
 // argv[2]: tcp port
 int main(int argc, char **argv) {
-  const auto DISPATCH_DURATION = std::chrono::milliseconds(50);
   VoiceCommuniactionNetwork vcn(atoi(argv[1]));
 
   Network network;
 
   auto wait_connection_thread = std::thread([&]{ wait_connection(&network, atoi(argv[2]), message_handler); });
-
-  auto last_time = std::chrono::system_clock::now();
 
   puts("START: Waiting for the first connection.");
 
@@ -66,14 +63,6 @@ int main(int argc, char **argv) {
     }
 
     vcn.dispatchToClient();
-
-    // printf("milliseconds: %lld\n", std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now()  - last_time).count());
-
-    if(std::chrono::system_clock::now() - last_time > DISPATCH_DURATION) {
-      if(vcn.dispatchToClient() != 0) {
-        last_time = std::chrono::system_clock::now();
-      }
-    }
   }
 
   wait_connection_thread.join();

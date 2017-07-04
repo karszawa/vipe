@@ -74,28 +74,30 @@ public:
   }
 
   int dispatchToClient() {
-    // if(this->client_size > 1) {
-    //   for(int i = 0; i < this->client_size; i++) {
-    //     if(this->stacks[!i].stack_size == 0) {
-    //       continue;
-    //     }
-    //
-    //     sendto(this->soc, this->stacks[!i].pile, this->stacks[!i].stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
-    //   }
-    // }
-    //
-    // for(int i = 0; i < this->client_size; i++) {
-    //   this->stacks[i].reset();
-    // }
-    //
-    // return 800;
+    if(this->client_size > 1) {
+      for(int i = 0; i < this->client_size; i++) {
+        if(this->stacks[!i].stack_size == 0) {
+          continue;
+        }
+
+        sendto(this->soc, this->stacks[!i].pile, this->stacks[!i].stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+      }
+    }
+
+    for(int i = 0; i < this->client_size; i++) {
+      this->stacks[i].reset();
+    }
+
+    return 800;
+
+
 
     static char buffer[RECEIVE_DATA_SIZE * 32];
 
-    int max_stack_size = 1 << 30;
+    int min_stack_size = 1 << 30;
 
     for(int i = 0; i < this->client_size; i++) {
-      max_stack_size = std::max(max_stack_size, this->stacks[i].stack_size);
+      min_stack_size = std::min(min_stack_size, this->stacks[i].stack_size);
     }
 
     for(int i = 0; i < this->client_size; i++) {
@@ -108,24 +110,24 @@ public:
           continue;
         }
 
-        for(int k = 0; k < this->stacks[i].stack_size; k++) {
+        for(int k = 0; k < min_stack_size; k++) {
           buffer[k] += ((int)this->stacks[j].pile[k]) / (this->client_size - 1);
         }
       }
 
       /// 2. SEND SYHTHESISED SOUNDS
 
-      if(max_stack_size > 0) {
-        sendto(this->soc, buffer, max_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
+      if(min_stack_size > 0) {
+        sendto(this->soc, buffer, min_stack_size, 0, (struct sockaddr *)&this->clients[i], sizeof(this->clients[i]));
       }
     }
 
     /// 3. RESET STACKS
     for(int i = 0; i < this->client_size; i++) {
-      this->stacks[i].shift(max_stack_size);
+      this->stacks[i].shift(min_stack_size);
     }
 
-    return max_stack_size;
+    return min_stack_size;
   }
 
 private:
