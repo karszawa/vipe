@@ -142,7 +142,6 @@ export default class Main extends React.Component {
         { content() }
 
         <Footer styles="height: 20vh;"/>
-        <button onClick={ this.onClick.bind(this) }>val</button>
       </Container>
     );
   }
