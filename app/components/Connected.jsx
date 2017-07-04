@@ -1,5 +1,5 @@
 import React from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { Icon, Button, Input, Collection, CollectionItem, CardPanel } from 'react-materialize';
 
 const Container = styled.div`
@@ -49,6 +49,19 @@ const AttendeeListWrapper = styled.ul`
   flex-direction: column;
 `;
 
+const buruburuAnimation = keyframes`
+  0% {transform: rotateZ(0deg)}
+  2% {transform: rotateZ(10deg)}
+  4% {transform: rotateZ(0deg)}
+  6% {transform: rotateZ(-10deg)}
+  8% {transform: rotateZ(0deg)}
+`;
+
+const BuruburuWrapper = styled.div`
+  animation: ${buruburuAnimation} 4s infinite;
+`;
+
+
 export default class Connecting extends React.Component {
   constructor(props) {
     super(props);
@@ -71,7 +84,9 @@ export default class Connecting extends React.Component {
     return (
       <Container>
         <ComponentHeader>
-          <Icon className="call-icon">call</Icon>
+          <BuruburuWrapper>
+            <Icon className="call-icon">call</Icon>
+          </BuruburuWrapper>
 
           <HostInformation>
             <HostLabel>HOST INFORMATION</HostLabel>

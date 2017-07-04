@@ -16,10 +16,16 @@ app.on('window-all-closed', () => {
   }
 });
 
+const isProduction = false
+
 app.on('ready', () => {
-  mainWindow = new BrowserWindow({ width: /* 380 */ 1200, height: 700 });
+  mainWindow = new BrowserWindow({ width: (isProduction ? 380 : 1200), height: 700 });
   mainWindow.loadURL(`${rootPath}/index.html`);
-  mainWindow.webContents.openDevTools();
+
+  if(!isProduction) {
+    mainWindow.webContents.openDevTools();
+  }
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
